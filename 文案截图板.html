@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文案编辑网页</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: background-color 0.3s, color 0.3s, border-radius 0.3s, box-shadow 0.3s, transform 0.3s;
+        }
+        
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            touch-action: none; /* 禁用触摸手势 */
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            height: 100%;
+            min-height: 100vh;
+            overscroll-behavior: none; /* 禁用下拉刷新 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        
+        /* 缩放容器 */
+        #zoomContainer {
+            width: 100%;
+            max-width: 800px;
+            height: 100%;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            transform-origin: center center;
+        }
+        
+        /* 主容器 */
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+        }
+        
+        /* 标题卡片 - 内容居中 */
+        .header-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border: 1px solid #eaeaea;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .header-card:hover {
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+        }
+        
+        .header-card h1 {
+            font-size: 24px;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-weight: 600;
+            width: 100%;
+        }
+        
+        .header-card .description {
+            font-size: 16px;
+            color: #5d6d7e;
+            line-height: 1.5;
+            width: 100%;
+        }
+        
+        /* 主文案卡片 - 高度最大化 */
+        .content-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+            border: 1px solid #eaeaea;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            margin-bottom: 15px;
+            min-height: 0; /* 允许内容压缩 */
+        }
+        
+        /* 文案编辑器样式 - 高度最大化 */
+        .editor-area {
+            width: 100%;
+            height: 100%;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            line-height: 1.6;
+            resize: none;
+            background-color: #fdfdfd;
+            flex-grow: 1;
+            overflow-y: auto;
+            min-height: 0;
+        }
+        
+        .editor-area:focus {
+            outline: none;
+            border-color: #4d90fe;
+            box-shadow: 0 0 0 2px rgba(77, 144, 254, 0.1);
+        }
+        
+        /* 设置按钮样式 */
+        .settings-button {
+            background-color: #4d90fe;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin: 0 auto;
+            display: block;
+            box-shadow: 0 4px 12px rgba(77, 144, 254, 0.3);
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+        
+        .settings-button:hover {
+            background-color: #3a7de8;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(77, 144, 254, 0.4);
+        }
+        
+        /* 设置面板 */
+        .settings-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            overflow-y: auto;
+            display: none;
+            flex-direction: column;
+        }
+        
+        .settings-panel h2 {
+            font-size: 22px;
+            color: #2c3e50;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        
+        /* 圆形取消按钮 */
+        .cancel-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 999;
+            box-shadow: 0 6px 16px rgba(255, 68, 68, 0.4);
+            transition: all 0.3s ease;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .cancel-button:hover {
+            background-color: #ff3333;
+            transform: scale(1.1);
+            box-shadow: 0 8px 20px rgba(255, 68, 68, 0.5);
+        }
+        
+        .cancel-button:active {
+            transform: scale(0.95);
+        }
+        
+        .settings-group {
+            margin-bottom: 25px;
+        }
+        
+        .settings-group h3 {
+            font-size: 16px;
+            color: #5d6d7e;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+        
+        .color-picker {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .color-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .color-label {
+            font-size: 14px;
+            color: #5d6d7e;
+            min-width: 80px;
+        }
+        
+        .color-input {
+            width: 100%;
+            height: 36px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 2px;
+            cursor: pointer;
+            background: transparent;
+        }
+        
+        /* 字体选择下拉框 */
+        .font-select {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            background-color: white;
+            cursor: pointer;
+            margin-top: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .font-select:focus {
+            outline: none;
+            border-color: #4d90fe;
+            box-shadow: 0 0 0 2px rgba(77, 144, 254, 0.1);
+        }
+        
+        .slider-container {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4d90fe;
+            cursor: pointer;
+        }
+        
+        .close-settings {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #7f8c8d;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        
+        .close-settings:hover {
+            background-color: #f0f0f0;
+        }
+        
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .header-card {
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+            
+            .header-card h1 {
+                font-size: 20px;
+            }
+            
+            .header-card .description {
+                font-size: 14px;
+            }
+            
+            .content-card {
+                padding: 18px;
+                margin-bottom: 10px;
+            }
+            
+            .editor-area {
+                font-size: 15px;
+                padding: 12px;
+            }
+            
+            .settings-button {
+                padding: 10px 25px;
+                font-size: 15px;
+            }
+            
+            .settings-panel {
+                padding: 20px;
+            }
+            
+            .color-picker {
+                grid-template-columns: 1fr;
+            }
+            
+            .cancel-button {
+                bottom: 20px;
+                right: 20px;
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .header-card h1 {
+                font-size: 18px;
+            }
+            
+            .settings-button {
+                padding: 8px 20px;
+                font-size: 14px;
+            }
+            
+            .cancel-button {
+                bottom: 15px;
+                right: 15px;
+                width: 45px;
+                height: 45px;
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 缩放容器 -->
+    <div id="zoomContainer">
+        <div class="container">
+            <!-- 顶部小卡片 -->
+            <div class="header-card" id="headerCard">
+                <h1 id="title">匿名投稿</h1>
+                <p class="description">小阿山匿信墙-私信投稿</p>
+            </div>
+            
+            <!-- 主文案卡片 -->
+            <div class="content-card" id="contentCard">
+                <textarea 
+                    class="editor-area" 
+                    id="editor" 
+                    placeholder="在这里输入您的文案..."
+                ></textarea>
+                
+                <!-- 设置面板 -->
+                <div class="settings-panel" id="settingsPanel">
+                    <button class="close-settings" id="closeSettings">×</button>
+                    <h2>样式设置</h2>
+                    
+                    <div class="settings-group">
+                        <h3>文案字体</h3>
+                        <select class="font-select" id="fontSelect">
+                            <option value="'Segoe UI', 'Microsoft YaHei', sans-serif">默认字体</option>
+                            <option value="'SimSun', '宋体', serif">宋体</option>
+                            <option value="'SimHei', '黑体', sans-serif">黑体</option>
+                            <option value="'KaiTi', '楷体', serif">楷体</option>
+                            <option value="'Microsoft JhengHei', '微软正黑体', sans-serif">微软正黑体</option>
+                            <option value="'Arial', sans-serif">Arial</option>
+                            <option value="'Times New Roman', serif">Times New Roman</option>
+                            <option value="'Courier New', monospace">Courier New</option>
+                            <option value="'Georgia', serif">Georgia</option>
+                            <option value="'Verdana', sans-serif">Verdana</option>
+                            <option value="'Tahoma', sans-serif">Tahoma</option>
+                            <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                        </select>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <h3>背景颜色</h3>
+                        <div class="color-picker">
+                            <div class="color-option">
+                                <span class="color-label">页面背景</span>
+                                <input type="color" class="color-input" id="bodyBgColor" value="#f5f7fa">
+                            </div>
+                            <div class="color-option">
+                                <span class="color-label">标题卡片</span>
+                                <input type="color" class="color-input" id="headerBgColor" value="#ffffff">
+                            </div>
+                            <div class="color-option">
+                                <span class="color-label">大卡片</span>
+                                <input type="color" class="color-input" id="contentBgColor" value="#ffffff">
+                            </div>
+                            <div class="color-option">
+                                <span class="color-label">文本框</span>
+                                <input type="color" class="color-input" id="editorBgColor" value="#fdfdfd">
+                            </div>
+                            <div class="color-option">
+                                <span class="color-label">设置面板</span>
+                                <input type="color" class="color-input" id="panelBgColor" value="#ffffff">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <h3>字体颜色</h3>
+                        <div class="color-picker">
+                            <div class="color-option">
+                                <span class="color-label">标题</span>
+                                <input type="color" class="color-input" id="titleColor" value="#2c3e50">
+                            </div>
+                            <div class="color-option">
+                                <span class="color-label">简介</span>
+                                <input type="color" class="color-input" id="descColor" value="#5d6d7e">
+                            </div>
+                            <div class="color-option">
+                                <span class="color-label">文本框</span>
+                                <input type="color" class="color-input" id="editorTextColor" value="#333333">
+                            </div>
+                            <div class="color-option">
+                                <span class="color-label">设置面板文字</span>
+                                <input type="color" class="color-input" id="panelTextColor" value="#2c3e50">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <h3>边框颜色</h3>
+                        <div class="color-picker">
+                            <div class="color-option">
+                                <span class="color-label">标题卡片</span>
+                                <input type="color" class="color-input" id="headerBorderColor" value="#eaeaea">
+                            </div>
+                            <div class="color-option">
+                                <span class="color-label">大卡片</span>
+                                <input type="color" class="color-input" id="contentBorderColor" value="#eaeaea">
+                            </div>
+                            <div class="color-option">
+                                <span class="color-label">文本框</span>
+                                <input type="color" class="color-input" id="editorBorderColor" value="#e0e0e0">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <h3>圆角大小</h3>
+                        <div class="slider-container">
+                            <div class="slider-label">
+                                <span>圆角大小</span>
+                                <span id="radiusValue">12px</span>
+                            </div>
+                            <input type="range" id="radiusSlider" min="0" max="30" value="12" step="1">
+                        </div>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <h3>阴影设置</h3>
+                        <div class="slider-container">
+                            <div class="slider-label">
+                                <span>阴影大小</span>
+                                <span id="shadowSizeValue">6px</span>
+                            </div>
+                            <input type="range" id="shadowSizeSlider" min="0" max="20" value="6" step="1">
+                            
+                            <div class="slider-label" style="margin-top: 15px;">
+                                <span>阴影颜色</span>
+                                <input type="color" class="color-input" id="shadowColor" value="#000000" style="width: 60px; height: 30px;">
+                            </div>
+                            
+                            <div class="slider-label" style="margin-top: 15px;">
+                                <span>阴影透明度</span>
+                                <span id="shadowOpacityValue">0.1</span>
+                            </div>
+                            <input type="range" id="shadowOpacitySlider" min="0" max="100" value="10" step="1">
+                        </div>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <h3>页面缩放</h3>
+                        <div class="slider-container">
+                            <div class="slider-label">
+                                <span>缩放比例</span>
+                                <span id="zoomValue">100%</span>
+                            </div>
+                            <input type="range" id="zoomSlider" min="30" max="300" value="100" step="1">
+                            <div style="font-size: 14px; color: #7f8c8d; margin-top: 10px;">
+                                滑动调整页面整体缩放比例
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 设置按钮 -->
+            <button class="settings-button" id="settingsButton">打开设置</button>
+        </div>
+    </div>
+    
+    <!-- 圆形取消按钮 -->
+    <button class="cancel-button" id="cancelButton">×</button>
+
+    <script>
+        // 获取DOM元素
+        const headerCard = document.getElementById('headerCard');
+        const title = document.getElementById('title');
+        const editor = document.getElementById('editor');
+        const settingsButton = document.getElementById('settingsButton');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const closeSettings = document.getElementById('closeSettings');
+        const cancelButton = document.getElementById('cancelButton');
+        const zoomContainer = document.getElementById('zoomContainer');
+        const fontSelect = document.getElementById('fontSelect');
+        
+        // 点击标题切换功能
+        headerCard.addEventListener('click', function() {
+            if (title.textContent === '匿名投稿') {
+                title.textContent = '公开投稿';
+            } else {
+                title.textContent = '匿名投稿';
+            }
+        });
+        
+        // 打开设置面板
+        settingsButton.addEventListener('click', function() {
+            settingsPanel.style.display = 'flex';
+            cancelButton.style.display = 'flex';
+            settingsButton.textContent = '设置已打开';
+            settingsButton.style.backgroundColor = '#34a853';
+        });
+        
+        // 关闭设置面板的函数
+        function closeSettingsPanel() {
+            settingsPanel.style.display = 'none';
+            cancelButton.style.display = 'none';
+            settingsButton.textContent = '打开设置';
+            settingsButton.style.backgroundColor = '#4d90fe';
+        }
+        
+        // 关闭设置面板
+        closeSettings.addEventListener('click', closeSettingsPanel);
+        
+        // 圆形取消按钮关闭设置面板
+        cancelButton.addEventListener('click', closeSettingsPanel);
+        
+        // 字体选择功能
+        fontSelect.addEventListener('change', function() {
+            const selectedFont = this.value;
+            editor.style.fontFamily = selectedFont;
+            
+            // 关闭设置面板
+            closeSettingsPanel();
+        });
+        
+        // 确保页面加载时高度正确
+        window.addEventListener('load', function() {
+            adjustEditorHeight();
+        });
+        
+        // 窗口大小改变时重新调整高度
+        window.addEventListener('resize', adjustEditorHeight);
+        
+        function adjustEditorHeight() {
+            const contentCard = document.querySelector('.content-card');
+            
+            // 计算可用高度
+            const computedStyle = window.getComputedStyle(contentCard);
+            const paddingTop = parseInt(computedStyle.paddingTop);
+            const paddingBottom = parseInt(computedStyle.paddingBottom);
+            
+            editor.style.height = 'auto';
+            const availableHeight = contentCard.clientHeight - paddingTop - paddingBottom - 2;
+            editor.style.height = availableHeight + 'px';
+        }
+        
+        // 颜色选择器功能
+        const colorInputs = document.querySelectorAll('.color-input');
+        colorInputs.forEach(input => {
+            input.addEventListener('input', function() {
+                const id = this.id;
+                const value = this.value;
+                
+                switch(id) {
+                    case 'bodyBgColor':
+                        document.body.style.backgroundColor = value;
+                        break;
+                    case 'headerBgColor':
+                        document.getElementById('headerCard').style.backgroundColor = value;
+                        break;
+                    case 'contentBgColor':
+                        document.getElementById('contentCard').style.backgroundColor = value;
+                        break;
+                    case 'editorBgColor':
+                        document.getElementById('editor').style.backgroundColor = value;
+                        break;
+                    case 'panelBgColor':
+                        const alpha = 0.98;
+                        // 将hex颜色转换为rgba
+                        const r = parseInt(value.slice(1, 3), 16);
+                        const g = parseInt(value.slice(3, 5), 16);
+                        const b = parseInt(value.slice(5, 7), 16);
+                        settingsPanel.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                        break;
+                    case 'titleColor':
+                        title.style.color = value;
+                        break;
+                    case 'descColor':
+                        document.querySelector('.description').style.color = value;
+                        break;
+                    case 'editorTextColor':
+                        editor.style.color = value;
+                        break;
+                    case 'panelTextColor':
+                        document.querySelector('.settings-panel h2').style.color = value;
+                        document.querySelectorAll('.settings-group h3').forEach(h3 => {
+                            h3.style.color = value;
+                        });
+                        break;
+                    case 'headerBorderColor':
+                        document.getElementById('headerCard').style.borderColor = value;
+                        break;
+                    case 'contentBorderColor':
+                        document.getElementById('contentCard').style.borderColor = value;
+                        break;
+                    case 'editorBorderColor':
+                        editor.style.borderColor = value;
+                        break;
+                    case 'shadowColor':
+                        // 阴影颜色将在阴影设置更新时应用
+                        updateShadows();
+                        break;
+                }
+            });
+        });
+        
+        // 圆角滑块
+        const radiusSlider = document.getElementById('radiusSlider');
+        const radiusValue = document.getElementById('radiusValue');
+        
+        radiusSlider.addEventListener('input', function() {
+            const radius = this.value + 'px';
+            radiusValue.textContent = radius;
+            
+            // 应用圆角到所有卡片
+            document.querySelectorAll('.header-card, .content-card, .settings-panel').forEach(card => {
+                card.style.borderRadius = radius;
+            });
+            
+            // 调整编辑器圆角
+            editor.style.borderRadius = (this.value - 4) + 'px';
+        });
+        
+        // 阴影设置滑块
+        const shadowSizeSlider = document.getElementById('shadowSizeSlider');
+        const shadowSizeValue = document.getElementById('shadowSizeValue');
+        const shadowColorInput = document.getElementById('shadowColor');
+        const shadowOpacitySlider = document.getElementById('shadowOpacitySlider');
+        const shadowOpacityValue = document.getElementById('shadowOpacityValue');
+        
+        // 更新阴影的函数
+        function updateShadows() {
+            const size = shadowSizeSlider.value + 'px';
+            const opacity = shadowOpacitySlider.value / 100;
+            const color = shadowColorInput.value;
+            
+            // 解析颜色值
+            let r, g, b;
+            if (color.startsWith('#')) {
+                r = parseInt(color.slice(1, 3), 16);
+                g = parseInt(color.slice(3, 5), 16);
+                b = parseInt(color.slice(5, 7), 16);
+            } else {
+                // 如果是rgb或rgba格式
+                const match = color.match(/(\d+),\s*(\d+),\s*(\d+)/);
+                if (match) {
+                    r = parseInt(match[1]);
+                    g = parseInt(match[2]);
+                    b = parseInt(match[3]);
+                } else {
+                    r = 0; g = 0; b = 0;
+                }
+            }
+            
+            // 更新标题卡片阴影
+            document.querySelector('.header-card').style.boxShadow = `0 4px ${size} rgba(${r}, ${g}, ${b}, ${opacity * 0.8})`;
+            
+            // 更新大卡片阴影
+            const sizeNum = parseInt(size);
+            document.querySelector('.content-card').style.boxShadow = `0 ${size} ${sizeNum * 1.5}px rgba(${r}, ${g}, ${b}, ${opacity})`;
+            
+            // 更新设置面板阴影
+            document.querySelector('.settings-panel').style.boxShadow = `0 ${sizeNum + 4}px ${sizeNum * 2}px rgba(${r}, ${g}, ${b}, ${opacity * 1.5})`;
+            
+            // 更新设置按钮阴影
+            document.querySelector('.settings-button').style.boxShadow = `0 4px ${size} rgba(77, 144, 254, ${opacity * 3})`;
+        }
+        
+        shadowSizeSlider.addEventListener('input', function() {
+            shadowSizeValue.textContent = this.value + 'px';
+            updateShadows();
+        });
+        
+        shadowOpacitySlider.addEventListener('input', function() {
+            const opacity = this.value / 100;
+            shadowOpacityValue.textContent = opacity.toFixed(2);
+            updateShadows();
+        });
+        
+        shadowColorInput.addEventListener('input', updateShadows);
+        
+        // 页面缩放滑块
+        const zoomSlider = document.getElementById('zoomSlider');
+        const zoomValue = document.getElementById('zoomValue');
+        
+        zoomSlider.addEventListener('input', function() {
+            const zoomPercent = this.value;
+            zoomValue.textContent = zoomPercent + '%';
+            
+            // 应用缩放，保持原比例
+            const scale = zoomPercent / 100;
+            zoomContainer.style.transform = `scale(${scale})`;
+        });
+        
+        // 初始化阴影
+        updateShadows();
+        
+        // 彻底禁用所有下拉刷新/重新提交功能
+        document.addEventListener('touchstart', function(e) {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        document.addEventListener('touchmove', function(e) {
+            // 如果目标元素不是编辑器或设置面板，阻止默认行为
+            const target = e.target;
+            const isEditor = target === editor || target.closest('#editor');
+            const isSettingsPanel = target === settingsPanel || target.closest('#settingsPanel');
+            
+            if (!isEditor && !isSettingsPanel) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        // 防止表单重新提交
+        document.addEventListener('keydown', function(e) {
+            // 防止F5刷新
+            if (e.key === 'F5') {
+                e.preventDefault();
+            }
+            
+            // 防止Ctrl+R刷新
+            if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+            }
+            
+            // 防止Ctrl+Shift+R刷新
+            if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+                e.preventDefault();
+            }
+        });
+        
+        // 防止右键刷新
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+        
+        // 防止鼠标中键刷新
+        document.addEventListener('auxclick', function(e) {
+            if (e.button === 1) {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>
