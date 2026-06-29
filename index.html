@@ -1,826 +1,1222 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文案截图板</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            transition: background-color 0.3s, color 0.3s, border-radius 0.3s, box-shadow 0.3s, transform 0.3s;
-        }
-        
-        html, body {
-            height: 100%;
-            overflow: hidden;
-            touch-action: none; /* 禁用触摸手势 */
-        }
-        
-        body {
-            background-color: #f5f7fa;
-            color: #333;
-            line-height: 1.6;
-            padding: 20px;
-            height: 100%;
-            min-height: 100vh;
-            overscroll-behavior: none; /* 禁用下拉刷新 */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
-        }
-        
-        /* 缩放容器 */
-        #zoomContainer {
-            width: 100%;
-            max-width: 800px;
-            height: 100%;
-            max-height: 90vh;
-            display: flex;
-            flex-direction: column;
-            transform-origin: center center;
-        }
-        
-        /* 主容器 */
-        .container {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            width: 100%;
-        }
-        
-        /* 标题卡片 - 内容居中 */
-        .header-card {
-            background-color: #ffffff;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            border: 1px solid #eaeaea;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            flex-shrink: 0;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .header-card:hover {
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-        }
-        
-        .header-card h1 {
-            font-size: 24px;
-            color: #2c3e50;
-            margin-bottom: 8px;
-            font-weight: 600;
-            width: 100%;
-        }
-        
-        .header-card .description {
-            font-size: 16px;
-            color: #5d6d7e;
-            line-height: 1.5;
-            width: 100%;
-        }
-        
-        /* 主文案卡片 - 高度最大化 */
-        .content-card {
-            background-color: #ffffff;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-            border: 1px solid #eaeaea;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            margin-bottom: 15px;
-            min-height: 0; /* 允许内容压缩 */
-        }
-        
-        /* 文案编辑器样式 - 高度最大化 */
-        .editor-area {
-            width: 100%;
-            height: 100%;
-            padding: 15px;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 16px;
-            line-height: 1.6;
-            resize: none;
-            background-color: #fdfdfd;
-            flex-grow: 1;
-            overflow-y: auto;
-            min-height: 0;
-        }
-        
-        .editor-area:focus {
-            outline: none;
-            border-color: #4d90fe;
-            box-shadow: 0 0 0 2px rgba(77, 144, 254, 0.1);
-        }
-        
-        /* 设置按钮样式 */
-        .settings-button {
-            background-color: #4d90fe;
-            color: white;
-            border: none;
-            border-radius: 50px;
-            padding: 12px 30px;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            margin: 0 auto;
-            display: block;
-            box-shadow: 0 4px 12px rgba(77, 144, 254, 0.3);
-            transition: all 0.3s ease;
-            flex-shrink: 0;
-        }
-        
-        .settings-button:hover {
-            background-color: #3a7de8;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(77, 144, 254, 0.4);
-        }
-        
-        /* 设置面板 */
-        .settings-panel {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(8px);
-            z-index: 100;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-            overflow-y: auto;
-            display: none;
-            flex-direction: column;
-        }
-        
-        .settings-panel h2 {
-            font-size: 22px;
-            color: #2c3e50;
-            margin-bottom: 25px;
-            text-align: center;
-        }
-        
-        /* 圆形取消按钮 */
-        .cancel-button {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background-color: #ff4444;
-            color: white;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            z-index: 999;
-            box-shadow: 0 6px 16px rgba(255, 68, 68, 0.4);
-            transition: all 0.3s ease;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .cancel-button:hover {
-            background-color: #ff3333;
-            transform: scale(1.1);
-            box-shadow: 0 8px 20px rgba(255, 68, 68, 0.5);
-        }
-        
-        .cancel-button:active {
-            transform: scale(0.95);
-        }
-        
-        .settings-group {
-            margin-bottom: 25px;
-        }
-        
-        .settings-group h3 {
-            font-size: 16px;
-            color: #5d6d7e;
-            margin-bottom: 12px;
-            font-weight: 600;
-        }
-        
-        .color-picker {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-        
-        .color-option {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .color-label {
-            font-size: 14px;
-            color: #5d6d7e;
-            min-width: 80px;
-        }
-        
-        .color-input {
-            width: 100%;
-            height: 36px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 2px;
-            cursor: pointer;
-            background: transparent;
-        }
-        
-        /* 字体选择下拉框 */
-        .font-select {
-            width: 100%;
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
-            background-color: white;
-            cursor: pointer;
-            margin-top: 5px;
-            margin-bottom: 20px;
-        }
-        
-        .font-select:focus {
-            outline: none;
-            border-color: #4d90fe;
-            box-shadow: 0 0 0 2px rgba(77, 144, 254, 0.1);
-        }
-        
-        .slider-container {
-            margin-top: 15px;
-            padding: 15px;
-            background-color: #f8f9fa;
-            border-radius: 8px;
-        }
-        
-        .slider-label {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-        
-        input[type="range"] {
-            width: 100%;
-            height: 6px;
-            border-radius: 3px;
-            background: #ddd;
-            outline: none;
-            -webkit-appearance: none;
-        }
-        
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #4d90fe;
-            cursor: pointer;
-        }
-        
-        .close-settings {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: none;
-            border: none;
-            font-size: 24px;
-            color: #7f8c8d;
-            cursor: pointer;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-        }
-        
-        .close-settings:hover {
-            background-color: #f0f0f0;
-        }
-        
-        /* 移动端适配 */
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-            
-            .header-card {
-                padding: 15px;
-                margin-bottom: 15px;
-            }
-            
-            .header-card h1 {
-                font-size: 20px;
-            }
-            
-            .header-card .description {
-                font-size: 14px;
-            }
-            
-            .content-card {
-                padding: 18px;
-                margin-bottom: 10px;
-            }
-            
-            .editor-area {
-                font-size: 15px;
-                padding: 12px;
-            }
-            
-            .settings-button {
-                padding: 10px 25px;
-                font-size: 15px;
-            }
-            
-            .settings-panel {
-                padding: 20px;
-            }
-            
-            .color-picker {
-                grid-template-columns: 1fr;
-            }
-            
-            .cancel-button {
-                bottom: 20px;
-                right: 20px;
-                width: 50px;
-                height: 50px;
-                font-size: 20px;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .header-card h1 {
-                font-size: 18px;
-            }
-            
-            .settings-button {
-                padding: 8px 20px;
-                font-size: 14px;
-            }
-            
-            .cancel-button {
-                bottom: 15px;
-                right: 15px;
-                width: 45px;
-                height: 45px;
-                font-size: 18px;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no">
+  <title>炸金花 · 最终修复版</title>
+  <style>
+    :root { --ui-scale: 1; }
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{overscroll-behavior:contain;width:100vw;height:100vh;overflow:hidden;touch-action:manipulation;background:#0a1f0f}
+    body{font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;position:fixed;display:flex;justify-content:center;align-items:center}
+    #rotateHint{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:9999;justify-content:center;align-items:center;flex-direction:column;color:#fff;font-size:1.5rem;text-align:center}
+    #rotateHint .icon{font-size:4rem;margin-bottom:20px;animation:rotate-phone 2s ease-in-out infinite}
+    @keyframes rotate-phone{0%{transform:rotate(0deg)}50%{transform:rotate(90deg)}100%{transform:rotate(90deg)}}
+    .game-container{width:100vw;height:100vh;background:radial-gradient(ellipse at 50% 40%,#2d7d46 0%,#1b5e2a 45%,#0f3b1a 100%);position:relative;display:flex;flex-direction:column;box-shadow:inset 0 0 120px rgba(0,0,0,0.6);overflow:hidden}
+    .top-bar{display:flex;align-items:center;justify-content:space-between;height:calc(34px * var(--ui-scale));padding:0 calc(8px * var(--ui-scale));background:rgba(0,0,0,0.55);z-index:50}
+    .mode-btns{display:flex;gap:calc(5px * var(--ui-scale))}
+    .mode-btn{padding:calc(3px * var(--ui-scale)) calc(10px * var(--ui-scale));border-radius:calc(12px * var(--ui-scale));font-weight:700;font-size:calc(0.6rem * var(--ui-scale));cursor:pointer;border:2px solid transparent;background:rgba(255,255,255,0.2);color:#fff}
+    .mode-btn.active{background:rgba(212,168,67,0.8);color:#2c1810;border-color:#ffd700}
+    .top-right-btns{display:flex;gap:calc(5px * var(--ui-scale));align-items:center}
+    .fullscreen-btn,.settings-btn,.reset-btn{padding:calc(3px * var(--ui-scale)) calc(8px * var(--ui-scale));background:rgba(255,255,255,0.2);border:1px solid #fff;border-radius:calc(12px * var(--ui-scale));color:#fff;font-size:calc(0.6rem * var(--ui-scale));cursor:pointer}
+    .marquee{flex:1;overflow:hidden;white-space:nowrap;color:#ffaaaa;font-weight:700;font-size:calc(0.65rem * var(--ui-scale));text-align:center;margin:0 calc(8px * var(--ui-scale))}
+    .marquee span{display:inline-block;padding-left:100%;animation:scroll-left 18s linear infinite}
+    @keyframes scroll-left{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}
+    .timer-container{position:absolute;top:calc(8px * var(--ui-scale));right:calc(8px * var(--ui-scale));width:calc(50px * var(--ui-scale));height:calc(50px * var(--ui-scale));z-index:60;display:none;filter:drop-shadow(0 0 calc(6px * var(--ui-scale)) rgba(0,0,0,0.7))}
+    .timer-ring{width:100%;height:100%;transform:rotate(-90deg)}
+    .timer-ring .bg{fill:none;stroke:rgba(255,255,255,0.15);stroke-width:6}
+    .timer-ring .progress{fill:none;stroke:#ffd700;stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset 1s linear,stroke 0.5s}
+    .timer-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-weight:900;font-size:calc(1.1rem * var(--ui-scale));text-shadow:0 0 calc(8px * var(--ui-scale)) rgba(0,0,0,0.8)}
+    .danmaku-container{position:absolute;left:4px;bottom:10px;width:180px;height:100px;z-index:40;overflow:hidden;background:rgba(0,0,0,0.2);border-radius:6px;display:flex;flex-direction:column}
+    .danmaku-drag-handle{width:100%;height:14px;background:rgba(255,215,0,0.4);cursor:move;flex-shrink:0;border-radius:6px 6px 0 0;display:flex;align-items:center;justify-content:space-between;padding:0 4px;font-size:0.5rem;color:#fff;letter-spacing:2px}
+    .danmaku-font-btns{display:flex;gap:2px}
+    .danmaku-font-btns button{background:rgba(255,255,255,0.3);border:none;color:#fff;font-weight:700;font-size:0.5rem;width:14px;height:14px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
+    .danmaku-content{flex:1;overflow-y:auto;overflow-x:hidden;padding:2px 4px;font-size:0.55rem}
+    .danmaku-item{display:block;width:100%;padding:1px 4px;margin-bottom:1px;font-weight:400;color:#fff;background:rgba(0,0,0,0.5);border-radius:2px;white-space:nowrap;text-shadow:0 0 3px rgba(0,0,0,0.7);font-size:inherit}
+    .danmaku-item.raise{color:#ff6b6b;font-weight:700}.danmaku-item.allin{color:#ff4444;font-weight:700;background:rgba(180,20,20,0.5)}
+    .danmaku-item.loan{color:#ffbb33;font-weight:700}
+    .danmaku-separator{text-align:center;color:#ffd700;font-weight:700;font-size:inherit;padding:1px 0;margin:1px 0;border-top:1px solid rgba(255,215,0,0.5);border-bottom:1px solid rgba(255,215,0,0.5);background:rgba(0,0,0,0.3)}
+    .danmaku-resize-handle{position:absolute;right:0;bottom:0;width:14px;height:14px;cursor:nwse-resize;background:rgba(255,215,0,0.5);border-radius:0 0 6px 0}
+    .permanent-toast{position:absolute;top:35%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.9);color:#ffd700;padding:calc(16px * var(--ui-scale)) calc(24px * var(--ui-scale));border-radius:calc(14px * var(--ui-scale));font-weight:700;font-size:calc(1rem * var(--ui-scale));z-index:200;border:2px solid #ffd700;cursor:pointer;display:none;text-align:center}
+    .restart-btn{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);z-index:200;padding:calc(14px * var(--ui-scale)) calc(32px * var(--ui-scale));border-radius:calc(25px * var(--ui-scale));font-weight:700;font-size:calc(1rem * var(--ui-scale));letter-spacing:2px;cursor:pointer;border:none;background:linear-gradient(135deg,#ffd700,#ffaa00);color:#2c1810;box-shadow:0 0 30px rgba(255,215,0,0.8),0 0 60px rgba(255,180,0,0.5);display:none;animation:pulse-btn 1.5s ease-in-out infinite}
+    @keyframes pulse-btn{0%,100%{box-shadow:0 0 30px rgba(255,215,0,0.8)}50%{box-shadow:0 0 50px rgba(255,215,0,1),0 0 80px rgba(255,180,0,0.7)}}
+    .main-area{flex:1;display:flex;flex-direction:column;overflow:hidden}
+    .top-row{display:flex;justify-content:space-evenly;align-items:flex-start;padding:calc(4px * var(--ui-scale)) calc(6px * var(--ui-scale));height:25%;width:100%;position:relative;z-index:10}
+    .player-seat{display:flex;flex-direction:row;align-items:center;justify-content:center;min-width:calc(60px * var(--ui-scale));flex:1;max-width:calc(100px * var(--ui-scale));gap:calc(3px * var(--ui-scale))}
+    .player-avatar{width:calc(30px * var(--ui-scale));height:calc(30px * var(--ui-scale));border-radius:50%;border:2px solid #5a3a1a;overflow:hidden;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.5);background:#4a3a2a}
+    .player-avatar img{width:100%;height:100%;object-fit:cover}
+    .player-avatar.active-turn{animation:pulse-glow 0.8s ease-in-out infinite;border-color:#ffd700!important;box-shadow:0 0 20px rgba(255,215,0,0.9)!important}
+    @keyframes pulse-glow{0%,100%{box-shadow:0 0 15px rgba(255,215,0,0.6)}50%{box-shadow:0 0 30px rgba(255,215,0,1),0 0 45px rgba(255,180,0,0.7)}}
+    .player-info{display:flex;flex-direction:column;align-items:flex-start;gap:1px}
+    .player-name{font-size:calc(0.55rem * var(--ui-scale));font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.8);background:rgba(0,0,0,0.5);padding:calc(1px * var(--ui-scale)) calc(6px * var(--ui-scale));border-radius:8px;white-space:nowrap}
+    .player-chips{font-size:calc(0.5rem * var(--ui-scale));color:#f0d68a;font-weight:600;background:rgba(0,0,0,0.5);padding:calc(1px * var(--ui-scale)) calc(5px * var(--ui-scale));border-radius:6px}
+    .player-loan{font-size:calc(0.45rem * var(--ui-scale));color:#ff6b6b;font-weight:700;background:rgba(180,20,20,0.7);padding:0 calc(5px * var(--ui-scale));border-radius:6px;cursor:pointer;display:inline-block}
+    .player-status{font-size:calc(0.45rem * var(--ui-scale));font-weight:700;padding:0 calc(4px * var(--ui-scale));border-radius:6px;margin-top:1px}
+    .status-folded{background:rgba(255,165,0,0.8);color:#fff}.status-out{background:rgba(220,20,60,0.8);color:#fff}
+    .status-eliminated{background:rgba(0,0,0,0.85);color:#fff}.status-watching{background:rgba(100,100,40,0.7);color:#ffeaa7}
+    .cards-row{display:flex;gap:calc(2px * var(--ui-scale));margin-top:calc(2px * var(--ui-scale));position:relative}
+    .card-mini{width:calc(26px * var(--ui-scale));height:calc(36px * var(--ui-scale));border-radius:3px;background:linear-gradient(135deg,#1a3a6c,#1e5a9e);border:1.5px solid #3a6aaa;box-shadow:1px 1px 4px rgba(0,0,0,0.5);position:relative;overflow:hidden}
+    .card-mini.revealed{background:#fff;border-color:#bbb}
+    .card-mini.deal-anim{animation:dealPop 0.3s ease-out}
+    @keyframes dealPop{0%{transform:scale(0.3);opacity:0}60%{transform:scale(1.2);opacity:1}100%{transform:scale(1);opacity:1}}
+    .card-inner{display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;font-weight:700}
+    .card-mini.revealed .card-inner{display:flex}
+    .card-rank{font-size:calc(0.55rem * var(--ui-scale));line-height:1}
+    .card-suit{font-size:calc(0.5rem * var(--ui-scale));line-height:1}
+    .suit-red{color:#d32f2f}.suit-black{color:#1a1a1a}
+    .watched-badge{position:absolute;top:-4px;right:-4px;width:calc(12px * var(--ui-scale));height:calc(12px * var(--ui-scale));background:#ff9800;border-radius:50%;font-size:calc(0.4rem * var(--ui-scale));display:flex;align-items:center;justify-content:center;color:#fff;z-index:2;box-shadow:0 1px 2px rgba(0,0,0,0.5)}
+    .middle-area{flex:1;display:flex;align-items:center;justify-content:center;gap:calc(10px * var(--ui-scale));position:relative;z-index:5;pointer-events:none}
+    .ante-btn{pointer-events:auto;padding:calc(4px * var(--ui-scale)) calc(10px * var(--ui-scale));border-radius:calc(16px * var(--ui-scale));background:rgba(0,0,0,0.6);color:#ffd700;font-weight:700;font-size:calc(0.6rem * var(--ui-scale));border:2px solid #d4a843;cursor:pointer;letter-spacing:1px}
+    .pot-display{background:rgba(0,0,0,0.55);padding:calc(8px * var(--ui-scale)) calc(28px * var(--ui-scale));border-radius:30px;text-align:center;border:2px solid rgba(212,168,67,0.6);backdrop-filter:blur(4px);z-index:2}
+    .pot-label{font-size:calc(0.8rem * var(--ui-scale));color:#cba87a;letter-spacing:2px;font-weight:600}
+    .pot-amount{font-size:calc(1.8rem * var(--ui-scale));font-weight:900;color:#fff;text-shadow:0 0 15px rgba(255,215,0,0.7)}
+    .bottom-area{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:calc(4px * var(--ui-scale)) calc(8px * var(--ui-scale)) calc(8px * var(--ui-scale));height:28%;width:100%;z-index:10}
+    .my-seat{display:flex;flex-direction:row;align-items:center;justify-content:center;margin-bottom:calc(3px * var(--ui-scale));gap:calc(4px * var(--ui-scale))}
+    .my-seat .player-avatar{width:calc(34px * var(--ui-scale));height:calc(34px * var(--ui-scale));font-size:calc(1.2rem * var(--ui-scale));border-color:#f0d68a;background:#3a1f0a!important;box-shadow:0 0 15px rgba(255,215,0,0.4)}
+    .my-seat .player-name{font-size:calc(0.6rem * var(--ui-scale));padding:calc(1px * var(--ui-scale)) calc(8px * var(--ui-scale))}
+    .my-seat .player-chips{font-size:calc(0.55rem * var(--ui-scale))}
+    .my-seat .card-mini{width:calc(30px * var(--ui-scale));height:calc(42px * var(--ui-scale));border-radius:4px;border-width:1.5px}
+    .my-seat .card-rank{font-size:calc(0.65rem * var(--ui-scale))}
+    .my-seat .card-suit{font-size:calc(0.55rem * var(--ui-scale))}
+    .action-panel{display:flex;gap:calc(3px * var(--ui-scale));flex-wrap:wrap;justify-content:center;align-items:center;pointer-events:auto;background:rgba(0,0,0,0.45);padding:calc(4px * var(--ui-scale)) calc(8px * var(--ui-scale));border-radius:25px;backdrop-filter:blur(6px);margin-top:calc(2px * var(--ui-scale))}
+    .action-btn,.input-group button{padding:calc(4px * var(--ui-scale)) calc(8px * var(--ui-scale));border-radius:calc(16px * var(--ui-scale));font-weight:700;font-size:calc(0.6rem * var(--ui-scale));letter-spacing:0.3px;cursor:pointer;border:none;transition:0.2s;box-shadow:0 2px 6px rgba(0,0,0,0.4);text-transform:uppercase;white-space:nowrap;background:#444;color:#fff}
+    .action-btn:active,.input-group button:active{transform:scale(0.95)}.action-btn:disabled,.input-group button:disabled{opacity:0.45;filter:grayscale(30%)}
+    .input-group{display:flex;align-items:center;background:rgba(0,0,0,0.5);border-radius:calc(16px * var(--ui-scale));padding:1px 1px 1px calc(6px * var(--ui-scale));gap:calc(2px * var(--ui-scale))}
+    .input-group input{width:calc(38px * var(--ui-scale));padding:calc(3px * var(--ui-scale)) calc(2px * var(--ui-scale));border-radius:calc(12px * var(--ui-scale));border:1px solid #aaa;text-align:center;font-weight:700;font-size:calc(0.65rem * var(--ui-scale));background:#fff;color:#1a1a1a}
+    .btn-dark{background:linear-gradient(135deg,#5d3a7a,#7b4fa0)}.btn-bright{background:linear-gradient(135deg,#c0752a,#e8943a)}
+    .btn-watch{background:linear-gradient(135deg,#2a6d9e,#3a8dc8)}.btn-compare{background:linear-gradient(135deg,#b83230,#d9443e)}
+    .btn-fold{background:linear-gradient(135deg,#555,#777)}.btn-start{background:linear-gradient(135deg,#d4a843,#f0d68a);color:#2c1810;font-size:calc(0.7rem * var(--ui-scale));padding:calc(6px * var(--ui-scale)) calc(14px * var(--ui-scale))}
+    .show-cards-check{display:flex;align-items:center;gap:calc(3px * var(--ui-scale));color:#fff;font-size:calc(0.6rem * var(--ui-scale));margin-left:calc(6px * var(--ui-scale))}
+    .show-cards-check input{width:calc(14px * var(--ui-scale));height:calc(14px * var(--ui-scale));cursor:pointer}
+    .loan-popup,.settings-popup,.gameover-popup{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.92);border:2px solid #ffd700;border-radius:calc(12px * var(--ui-scale));padding:calc(12px * var(--ui-scale));z-index:200;display:none;flex-direction:column;gap:calc(8px * var(--ui-scale));color:#fff;font-size:calc(0.65rem * var(--ui-scale))}
+    .loan-popup button,.settings-popup button,.gameover-popup button{padding:calc(5px * var(--ui-scale)) calc(10px * var(--ui-scale));border-radius:calc(10px * var(--ui-scale));font-weight:700;border:none;cursor:pointer;font-size:inherit}
+    .settings-popup label{display:flex;justify-content:space-between;align-items:center;gap:calc(10px * var(--ui-scale))}
+    .settings-popup input[type=range]{width:calc(120px * var(--ui-scale))}
+    .settings-popup input[type=number]{width:calc(80px * var(--ui-scale));padding:calc(2px * var(--ui-scale)) calc(5px * var(--ui-scale));border-radius:6px;border:1px solid #aaa;text-align:center;font-weight:700}
+    .compare-targets{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:200;display:flex;gap:calc(5px * var(--ui-scale));flex-wrap:wrap;justify-content:center;background:rgba(0,0,0,0.85);padding:calc(8px * var(--ui-scale)) calc(12px * var(--ui-scale));border-radius:24px;pointer-events:auto}
+    .compare-target-btn{padding:calc(4px * var(--ui-scale)) calc(10px * var(--ui-scale));border-radius:14px;font-weight:700;font-size:calc(0.6rem * var(--ui-scale));cursor:pointer;border:2px solid #ff4444;background:rgba(0,0,0,0.7);color:#fff}
+    .message-toast{position:absolute;top:45%;left:50%;transform:translate(-50%,-50%) scale(0);z-index:200;background:rgba(0,0,0,0.9);color:#ffd700;padding:calc(8px * var(--ui-scale)) calc(18px * var(--ui-scale));border-radius:20px;font-weight:700;font-size:calc(0.8rem * var(--ui-scale));pointer-events:none;transition:transform 0.25s cubic-bezier(0.175,0.885,0.32,1.275);border:2px solid rgba(255,215,0,0.6);white-space:nowrap}
+    .message-toast.show{transform:translate(-50%,-50%) scale(1)}
+    .compare-result-overlay{position:absolute;inset:0;z-index:200;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:0.3s;backdrop-filter:blur(2px)}
+    .compare-result-overlay.show{opacity:1;pointer-events:auto}
+    .compare-result-card{background:rgba(20,20,20,0.95);padding:calc(14px * var(--ui-scale)) calc(18px * var(--ui-scale));border-radius:14px;text-align:center;color:#fff;border:2px solid #d4a843;font-size:calc(0.9rem * var(--ui-scale))}
+    .chip{position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;pointer-events:auto;z-index:150;text-shadow:0 0 3px rgba(0,0,0,0.7);cursor:grab;user-select:none;}
+    .chip:active{cursor:grabbing;}
+    .chip-shadow{box-shadow:0 4px 12px rgba(0,0,0,0.6)}
+    .firework{position:absolute;width:6px;height:6px;border-radius:50%;pointer-events:none;z-index:160;animation:firework-fly 1.5s ease-out forwards}
+    @keyframes firework-fly{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0}}
+    .gray-overlay{position:absolute;inset:0;z-index:170;background:rgba(60,60,60,0.7);pointer-events:none;display:none}
+  </style>
 </head>
 <body>
-    <!-- 缩放容器 -->
-    <div id="zoomContainer">
-        <div class="container">
-            <!-- 顶部小卡片 -->
-            <div class="header-card" id="headerCard">
-                <h1 id="title">匿名投稿</h1>
-                <p class="description">小阿山匿信墙-私信投稿</p>
-            </div>
-            
-            <!-- 主文案卡片 -->
-            <div class="content-card" id="contentCard">
-                <textarea 
-                    class="editor-area" 
-                    id="editor" 
-                    placeholder="在这里输入您的文案..."
-                ></textarea>
-                
-                <!-- 设置面板 -->
-                <div class="settings-panel" id="settingsPanel">
-                    <button class="close-settings" id="closeSettings">×</button>
-                    <h2>样式设置</h2>
-                    
-                    <div class="settings-group">
-                        <h3>文案字体</h3>
-                        <select class="font-select" id="fontSelect">
-                            <option value="'Segoe UI', 'Microsoft YaHei', sans-serif">默认字体</option>
-                            <option value="'SimSun', '宋体', serif">宋体</option>
-                            <option value="'SimHei', '黑体', sans-serif">黑体</option>
-                            <option value="'KaiTi', '楷体', serif">楷体</option>
-                            <option value="'Microsoft JhengHei', '微软正黑体', sans-serif">微软正黑体</option>
-                            <option value="'Arial', sans-serif">Arial</option>
-                            <option value="'Times New Roman', serif">Times New Roman</option>
-                            <option value="'Courier New', monospace">Courier New</option>
-                            <option value="'Georgia', serif">Georgia</option>
-                            <option value="'Verdana', sans-serif">Verdana</option>
-                            <option value="'Tahoma', sans-serif">Tahoma</option>
-                            <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
-                        </select>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h3>背景颜色</h3>
-                        <div class="color-picker">
-                            <div class="color-option">
-                                <span class="color-label">页面背景</span>
-                                <input type="color" class="color-input" id="bodyBgColor" value="#f5f7fa">
-                            </div>
-                            <div class="color-option">
-                                <span class="color-label">标题卡片</span>
-                                <input type="color" class="color-input" id="headerBgColor" value="#ffffff">
-                            </div>
-                            <div class="color-option">
-                                <span class="color-label">大卡片</span>
-                                <input type="color" class="color-input" id="contentBgColor" value="#ffffff">
-                            </div>
-                            <div class="color-option">
-                                <span class="color-label">文本框</span>
-                                <input type="color" class="color-input" id="editorBgColor" value="#fdfdfd">
-                            </div>
-                            <div class="color-option">
-                                <span class="color-label">设置面板</span>
-                                <input type="color" class="color-input" id="panelBgColor" value="#ffffff">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h3>字体颜色</h3>
-                        <div class="color-picker">
-                            <div class="color-option">
-                                <span class="color-label">标题</span>
-                                <input type="color" class="color-input" id="titleColor" value="#2c3e50">
-                            </div>
-                            <div class="color-option">
-                                <span class="color-label">简介</span>
-                                <input type="color" class="color-input" id="descColor" value="#5d6d7e">
-                            </div>
-                            <div class="color-option">
-                                <span class="color-label">文本框</span>
-                                <input type="color" class="color-input" id="editorTextColor" value="#333333">
-                            </div>
-                            <div class="color-option">
-                                <span class="color-label">设置面板文字</span>
-                                <input type="color" class="color-input" id="panelTextColor" value="#2c3e50">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h3>边框颜色</h3>
-                        <div class="color-picker">
-                            <div class="color-option">
-                                <span class="color-label">标题卡片</span>
-                                <input type="color" class="color-input" id="headerBorderColor" value="#eaeaea">
-                            </div>
-                            <div class="color-option">
-                                <span class="color-label">大卡片</span>
-                                <input type="color" class="color-input" id="contentBorderColor" value="#eaeaea">
-                            </div>
-                            <div class="color-option">
-                                <span class="color-label">文本框</span>
-                                <input type="color" class="color-input" id="editorBorderColor" value="#e0e0e0">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h3>圆角大小</h3>
-                        <div class="slider-container">
-                            <div class="slider-label">
-                                <span>圆角大小</span>
-                                <span id="radiusValue">12px</span>
-                            </div>
-                            <input type="range" id="radiusSlider" min="0" max="30" value="12" step="1">
-                        </div>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h3>阴影设置</h3>
-                        <div class="slider-container">
-                            <div class="slider-label">
-                                <span>阴影大小</span>
-                                <span id="shadowSizeValue">6px</span>
-                            </div>
-                            <input type="range" id="shadowSizeSlider" min="0" max="20" value="6" step="1">
-                            
-                            <div class="slider-label" style="margin-top: 15px;">
-                                <span>阴影颜色</span>
-                                <input type="color" class="color-input" id="shadowColor" value="#000000" style="width: 60px; height: 30px;">
-                            </div>
-                            
-                            <div class="slider-label" style="margin-top: 15px;">
-                                <span>阴影透明度</span>
-                                <span id="shadowOpacityValue">0.1</span>
-                            </div>
-                            <input type="range" id="shadowOpacitySlider" min="0" max="100" value="10" step="1">
-                        </div>
-                    </div>
-                    
-                    <div class="settings-group">
-                        <h3>页面缩放</h3>
-                        <div class="slider-container">
-                            <div class="slider-label">
-                                <span>缩放比例</span>
-                                <span id="zoomValue">100%</span>
-                            </div>
-                            <input type="range" id="zoomSlider" min="30" max="300" value="100" step="1">
-                            <div style="font-size: 14px; color: #7f8c8d; margin-top: 10px;">
-                                滑动调整页面整体缩放比例
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 设置按钮 -->
-            <button class="settings-button" id="settingsButton">打开设置</button>
-        </div>
+<div id="rotateHint"><div class="icon">📱</div><div>请旋转手机至横屏</div></div>
+<div class="game-container" id="gameContainer">
+  <div class="top-bar">
+    <div class="mode-btns"><button class="mode-btn active" id="infiniteBtn">♾️ 无限版</button><button class="mode-btn" id="finiteBtn">📏 有限版</button></div>
+    <div class="marquee"><span>本网站仅供娱乐学习参考，赌博害人害己，请勿参与任何赌博，本站不承担任何后果，一切解释权归开发者所有。</span></div>
+    <div class="top-right-btns">
+      <button class="reset-btn" id="resetBtn" title="重置无限版数据">🔒</button>
+      <button class="settings-btn" id="settingsBtn">⚙️ 设置</button>
+      <button class="fullscreen-btn" id="fullscreenBtn">⛶ 全屏</button>
     </div>
-    
-    <!-- 圆形取消按钮 -->
-    <button class="cancel-button" id="cancelButton">×</button>
+  </div>
+  <div class="timer-container" id="timerContainer">
+    <svg class="timer-ring" viewBox="0 0 50 50">
+      <circle class="bg" cx="25" cy="25" r="22"></circle>
+      <circle class="progress" id="timerProgress" cx="25" cy="25" r="22" stroke-dasharray="138.23" stroke-dashoffset="0"></circle>
+    </svg>
+    <div class="timer-text" id="timerText">30</div>
+  </div>
+  <div class="danmaku-container" id="danmakuContainer">
+    <div class="danmaku-drag-handle" id="danmakuDragHandle">
+      <span>⋮⋮ 拖动</span>
+      <div class="danmaku-font-btns">
+        <button id="danmakuFontDown">-</button>
+        <button id="danmakuFontUp">+</button>
+      </div>
+    </div>
+    <div class="danmaku-content" id="danmakuContent"></div>
+    <div class="danmaku-resize-handle" id="danmakuResizeHandle"></div>
+  </div>
+  <div class="permanent-toast" id="permanentToast"></div>
+  <div class="gray-overlay" id="grayOverlay"></div>
+  <!-- 游戏结束弹窗（有限版专用） -->
+  <div class="gameover-popup" id="gameOverModal">
+    <span id="gameOverMsg"></span>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;">
+      <button id="gameOverRestartBtn">🔄 重新开始</button>
+      <button id="gameOverToInfiniteBtn">♾️ 去无限版</button>
+    </div>
+  </div>
+  <div class="main-area">
+    <div class="top-row" id="topRow"></div>
+    <div class="middle-area" id="middleArea">
+      <button class="ante-btn" id="anteBtn">底注5</button>
+      <div class="pot-display"><div class="pot-label">🏆 底 池</div><div class="pot-amount" id="potAmount">0</div></div>
+      <div class="message-toast" id="messageToast"></div>
+    </div>
+    <div class="bottom-area">
+      <div class="my-seat" id="mySeat"></div>
+      <div class="action-panel" id="actionPanel"></div>
+    </div>
+  </div>
+  <div class="compare-targets" id="compareTargets" style="display:none;"></div>
+  <div class="compare-result-overlay" id="compareOverlay"><div class="compare-result-card" id="compareResultCard"></div></div>
+  <div class="loan-popup" id="loanPopup">
+    <span id="loanInfo">银行: 0</span>
+    <div class="input-group" style="margin:4px 0">
+      <input type="number" id="loanAmountInput" value="5000" min="1" step="1" style="width:80px">
+    </div>
+    <button id="loanBorrowBtn">借款</button>
+    <button id="loanRepayBtn">还清 (需 0)</button>
+    <button id="loanCloseBtn">关闭</button>
+  </div>
+  <div class="settings-popup" id="settingsPopup">
+    <span style="font-weight:700;text-align:center;color:#ffd700">游戏设置</span>
+    <label>UI缩放 <input type="range" id="uiScaleSlider" min="0.5" max="5" step="0.05" value="1"><span class="scale-value" id="uiScaleValue">1.0x</span></label>
+    <button id="settingsCloseBtn">关闭</button>
+  </div>
+  <div class="settings-popup" id="finiteSettingsPopup">
+    <span style="font-weight:700;text-align:center;color:#ffd700">有限版设置</span>
+    <label>初始筹码 <input type="number" id="settingChips" value="1000" min="100" max="100000"></label>
+    <label>底注 <input type="number" id="settingAnte" value="1" min="1" max="1000"></label>
+    <div style="display:flex;gap:6px;justify-content:center">
+      <button id="settingsConfirm">确认开始</button>
+      <button id="settingsCancel">取消</button>
+    </div>
+  </div>
+</div>
+<script>
+(function() {
+  const SUITS=['♦','♣','♥','♠'];const RANKS=['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+  const PLAYER_COUNT=5;
+  const INITIAL_CHIPS_FINITE=1000n;
+  const INITIAL_CHIPS_INFINITE_PLAYER=5000n;
+  const AI_INFINITE_CHIPS = 10n ** 30n;
+  const DEFAULT_ANTE=5n;
+  const STORAGE_KEY='zhajinhua_ultra';
+  const SETTINGS_KEY='zhajinhua_settings';
+  const TURN_TIMEOUT=30;
+  const PLAYER_CONFIG = {
+    human: { name: '你', avatar: 'https://placehold.co/30x30/FFD700/2c1810?text=你' },
+    ai: [
+      { name: '玩家1', avatar: 'https://placehold.co/30x30/5b7bb5/white?text=1' },
+      { name: '玩家2', avatar: 'https://placehold.co/30x30/b57b5b/white?text=2' },
+      { name: '玩家3', avatar: 'https://placehold.co/30x30/5b9e7b/white?text=3' },
+      { name: '玩家4', avatar: 'https://placehold.co/30x30/8b5b9e/white?text=4' }
+    ]
+  };
 
-    <script>
-        // 获取DOM元素
-        const headerCard = document.getElementById('headerCard');
-        const title = document.getElementById('title');
-        const editor = document.getElementById('editor');
-        const settingsButton = document.getElementById('settingsButton');
-        const settingsPanel = document.getElementById('settingsPanel');
-        const closeSettings = document.getElementById('closeSettings');
-        const cancelButton = document.getElementById('cancelButton');
-        const zoomContainer = document.getElementById('zoomContainer');
-        const fontSelect = document.getElementById('fontSelect');
-        
-        // 点击标题切换功能
-        headerCard.addEventListener('click', function() {
-            if (title.textContent === '匿名投稿') {
-                title.textContent = '公开投稿';
-            } else {
-                title.textContent = '匿名投稿';
-            }
-        });
-        
-        // 打开设置面板
-        settingsButton.addEventListener('click', function() {
-            settingsPanel.style.display = 'flex';
-            cancelButton.style.display = 'flex';
-            settingsButton.textContent = '设置已打开';
-            settingsButton.style.backgroundColor = '#34a853';
-        });
-        
-        // 关闭设置面板的函数
-        function closeSettingsPanel() {
-            settingsPanel.style.display = 'none';
-            cancelButton.style.display = 'none';
-            settingsButton.textContent = '打开设置';
-            settingsButton.style.backgroundColor = '#4d90fe';
+  function checkOrientation() {
+    const isLandscape = window.innerWidth > window.innerHeight;
+    document.getElementById('rotateHint').style.display = isLandscape ? 'none' : 'flex';
+    document.querySelector('.game-container').style.display = isLandscape ? 'flex' : 'none';
+  }
+  window.addEventListener('resize', checkOrientation);
+  window.addEventListener('orientationchange', checkOrientation);
+  checkOrientation();
+
+  const danmakuContainer=document.getElementById('danmakuContainer');
+  const danmakuContent=document.getElementById('danmakuContent');
+  const topRow=document.getElementById('topRow');
+  const mySeat=document.getElementById('mySeat');
+  const actionPanel=document.getElementById('actionPanel');
+  const compareTargets=document.getElementById('compareTargets');
+  const messageToast=document.getElementById('messageToast');
+  const compareOverlay=document.getElementById('compareOverlay');
+  const compareResultCard=document.getElementById('compareResultCard');
+  const potAmountEl=document.getElementById('potAmount');
+  const loanPopup=document.getElementById('loanPopup');
+  const permanentToast=document.getElementById('permanentToast');
+  const grayOverlay=document.getElementById('grayOverlay');
+  const infiniteBtn=document.getElementById('infiniteBtn');
+  const finiteBtn=document.getElementById('finiteBtn');
+  const anteBtn=document.getElementById('anteBtn');
+  const fullscreenBtn=document.getElementById('fullscreenBtn');
+  const timerContainer=document.getElementById('timerContainer');
+  const timerProgress=document.getElementById('timerProgress');
+  const timerText=document.getElementById('timerText');
+  const settingsBtn=document.getElementById('settingsBtn');
+  const settingsPopup=document.getElementById('settingsPopup');
+  const uiScaleSlider=document.getElementById('uiScaleSlider');
+  const uiScaleValue=document.getElementById('uiScaleValue');
+  const finiteSettingsPopup=document.getElementById('finiteSettingsPopup');
+  const danmakuResizeHandle=document.getElementById('danmakuResizeHandle');
+  const loanAmountInput=document.getElementById('loanAmountInput');
+  const resetBtn=document.getElementById('resetBtn');
+  const gameOverModal=document.getElementById('gameOverModal');
+  const gameOverMsg=document.getElementById('gameOverMsg');
+  const gameOverRestartBtn=document.getElementById('gameOverRestartBtn');
+  const gameOverToInfiniteBtn=document.getElementById('gameOverToInfiniteBtn');
+
+  function loadSettings() {
+    const s = localStorage.getItem(SETTINGS_KEY);
+    if (s) {
+      try {
+        const d = JSON.parse(s);
+        return {
+          uiScale: d.uiScale || 1,
+          danmakuFontSize: d.danmakuFontSize || null,
+          isInfiniteMode: d.isInfiniteMode !== undefined ? d.isInfiniteMode : true,
+          ante: BigInt(d.ante || '5'),
+          showCardsAtEnd: d.showCardsAtEnd || false
+        };
+      } catch(e) {}
+    }
+    return {
+      uiScale: 1,
+      danmakuFontSize: null,
+      isInfiniteMode: true,
+      ante: DEFAULT_ANTE,
+      showCardsAtEnd: false
+    };
+  }
+  function saveSettings() {
+    const s = {
+      uiScale: parseFloat(document.documentElement.style.getPropertyValue('--ui-scale')) || 1,
+      danmakuFontSize: danmakuContent.style.fontSize || getComputedStyle(danmakuContent).fontSize,
+      isInfiniteMode: isInfiniteMode,
+      ante: currentAnte.toString(),
+      showCardsAtEnd: showCardsAtEnd
+    };
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  }
+
+  function formatChipAmount(amount) {
+    if (typeof amount === 'number' && !isFinite(amount)) return '∞';
+    if (typeof amount === 'bigint' && amount >= AI_INFINITE_CHIPS) return '∞';
+    let num;
+    try {
+      num = BigInt(amount);
+    } catch(e) {
+      return '0';
+    }
+    if (num < 0n) num = 0n;
+    if (num >= 100000000n) {
+      const yi = Number(num / 10000000n) / 10;
+      return yi.toFixed(1).replace(/\.0$/, '') + '亿';
+    }
+    return num.toString();
+  }
+
+  // 弹幕拖拽
+  let isDragging=false,dragStartX,dragStartY,startLeft,startTop;
+  const dragHandle=document.getElementById('danmakuDragHandle');
+  function clampDanmaku() {
+    const container = document.getElementById('gameContainer');
+    const dm = danmakuContainer;
+    const dmRect = dm.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    let left = dm.offsetLeft, top = dm.offsetTop;
+    const maxLeft = containerRect.width - dmRect.width - 4;
+    const maxTop = containerRect.height - dmRect.height - 4;
+    left = Math.max(4, Math.min(left, maxLeft));
+    top = Math.max(4, Math.min(top, maxTop));
+    dm.style.left = left + 'px';
+    dm.style.top = top + 'px';
+  }
+  dragHandle.addEventListener('mousedown', e => {
+    if (e.target.tagName === 'BUTTON') return;
+    isDragging = true;
+    dragStartX = e.clientX; dragStartY = e.clientY;
+    startLeft = danmakuContainer.offsetLeft; startTop = danmakuContainer.offsetTop;
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    danmakuContainer.style.left = (startLeft + e.clientX - dragStartX) + 'px';
+    danmakuContainer.style.top = (startTop + e.clientY - dragStartY) + 'px';
+    clampDanmaku();
+  });
+  window.addEventListener('mouseup', () => { isDragging = false; clampDanmaku(); });
+  dragHandle.addEventListener('touchstart', e => {
+    if (e.target.tagName === 'BUTTON') return;
+    isDragging = true;
+    const t = e.touches[0];
+    dragStartX = t.clientX; dragStartY = t.clientY;
+    startLeft = danmakuContainer.offsetLeft; startTop = danmakuContainer.offsetTop;
+    e.preventDefault();
+  });
+  window.addEventListener('touchmove', e => {
+    if (!isDragging) return;
+    const t = e.touches[0];
+    danmakuContainer.style.left = (startLeft + t.clientX - dragStartX) + 'px';
+    danmakuContainer.style.top = (startTop + t.clientY - dragStartY) + 'px';
+    clampDanmaku();
+  });
+  window.addEventListener('touchend', () => { isDragging = false; clampDanmaku(); });
+
+  // 弹幕缩放
+  let isResizingDanmaku = false, resizeStartX, resizeStartY, startWidth, startHeight;
+  danmakuResizeHandle.addEventListener('mousedown', e => {
+    isResizingDanmaku = true;
+    resizeStartX = e.clientX; resizeStartY = e.clientY;
+    startWidth = danmakuContainer.offsetWidth; startHeight = danmakuContainer.offsetHeight;
+    e.preventDefault(); e.stopPropagation();
+  });
+  window.addEventListener('mousemove', e => {
+    if (!isResizingDanmaku) return;
+    const dx = e.clientX - resizeStartX;
+    const dy = e.clientY - resizeStartY;
+    let newW = Math.max(100, Math.min(600, startWidth + dx));
+    let newH = Math.max(60, Math.min(400, startHeight + dy));
+    danmakuContainer.style.width = newW + 'px';
+    danmakuContainer.style.height = newH + 'px';
+    clampDanmaku();
+  });
+  window.addEventListener('mouseup', () => {
+    if (isResizingDanmaku) { isResizingDanmaku = false; clampDanmaku(); }
+  });
+  danmakuResizeHandle.addEventListener('touchstart', e => {
+    isResizingDanmaku = true;
+    const t = e.touches[0];
+    resizeStartX = t.clientX; resizeStartY = t.clientY;
+    startWidth = danmakuContainer.offsetWidth; startHeight = danmakuContainer.offsetHeight;
+    e.preventDefault(); e.stopPropagation();
+  });
+  window.addEventListener('touchmove', e => {
+    if (!isResizingDanmaku) return;
+    const t = e.touches[0];
+    const dx = t.clientX - resizeStartX;
+    const dy = t.clientY - resizeStartY;
+    let newW = Math.max(100, Math.min(600, startWidth + dx));
+    let newH = Math.max(60, Math.min(400, startHeight + dy));
+    danmakuContainer.style.width = newW + 'px';
+    danmakuContainer.style.height = newH + 'px';
+    clampDanmaku();
+  });
+  window.addEventListener('touchend', () => {
+    if (isResizingDanmaku) { isResizingDanmaku = false; clampDanmaku(); }
+  });
+
+  document.getElementById('danmakuFontUp').addEventListener('click', (e) => {
+    e.stopPropagation();
+    let cur = parseFloat(getComputedStyle(danmakuContent).fontSize);
+    cur = Math.min(40, cur + 2);
+    danmakuContent.style.fontSize = cur + 'px';
+    saveSettings();
+  });
+  document.getElementById('danmakuFontDown').addEventListener('click', (e) => {
+    e.stopPropagation();
+    let cur = parseFloat(getComputedStyle(danmakuContent).fontSize);
+    cur = Math.max(10, cur - 2);
+    danmakuContent.style.fontSize = cur + 'px';
+    saveSettings();
+  });
+
+  settingsBtn.addEventListener('click', () => {
+    settingsPopup.style.display = settingsPopup.style.display === 'flex' ? 'none' : 'flex';
+  });
+  document.getElementById('settingsCloseBtn').addEventListener('click', () => {
+    settingsPopup.style.display = 'none';
+  });
+  uiScaleSlider.addEventListener('input', function() {
+    const val = parseFloat(this.value);
+    document.documentElement.style.setProperty('--ui-scale', val);
+    uiScaleValue.textContent = val.toFixed(2) + 'x';
+    saveSettings();
+  });
+
+  let audioCtx=null;
+  function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();}
+  function playSound(freq,type,duration,vol){
+    if(!audioCtx)initAudio();
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.connect(g);g.connect(audioCtx.destination);
+    o.frequency.value=freq;o.type=type;
+    g.gain.setValueAtTime(vol,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+duration);
+    o.start();o.stop(audioCtx.currentTime+duration);
+  }
+  function playDealCard(){ playSound(600,'sine',0.08,0.12); }
+  function playWatchCard(){ playSound(880,'triangle',0.15,0.2); }
+  function playBetSound(){ playSound(1000,'sine',0.1,0.18); }
+  function playRaiseSound(){ playSound(700,'sawtooth',0.12,0.2); }
+  function playCompareSound(){ playSound(300,'square',0.15,0.25); playSound(500,'square',0.1,0.15); }
+  function playFoldSound(){ playSound(400,'triangle',0.2,0.3); playSound(300,'triangle',0.2,0.3); }
+  function playYourTurn(){ playSound(1200,'sine',0.08,0.15); setTimeout(()=>playSound(1400,'sine',0.08,0.15),100); }
+  function playLoanSound(){ playSound(800,'sawtooth',0.12,0.2); }
+  function playRepaySound(){ playSound(1500,'sine',0.08,0.2); }
+  function playWinSound(){playSound(523,'triangle',0.3,0.5);setTimeout(()=>playSound(659,'triangle',0.3,0.5),150);setTimeout(()=>playSound(784,'triangle',0.3,0.5),300);setTimeout(()=>playSound(1047,'triangle',0.5,0.8),450);}
+  function playLoseSound(){playSound(200,'sawtooth',0.5,0.3);setTimeout(()=>playSound(150,'sawtooth',0.5,0.3),200);setTimeout(()=>playSound(100,'sawtooth',0.6,0.4),400);}
+  function playCoinSound(){playSound(1200,'sine',0.08,0.15);}
+  function playClickSound(){playSound(800,'sine',0.1,0.15);}
+
+  let turnTimer=null, turnSecondsLeft=0;
+  const CIRCUMFERENCE = 2 * Math.PI * 22;
+  function startTurnTimer(onTimeout){
+    clearTurnTimer();
+    turnSecondsLeft = TURN_TIMEOUT;
+    timerContainer.style.display = 'block';
+    timerProgress.style.strokeDasharray = CIRCUMFERENCE;
+    timerProgress.style.strokeDashoffset = '0';
+    timerText.textContent = TURN_TIMEOUT;
+    timerProgress.style.stroke = '#ffd700';
+    updateTimerColor();
+    turnTimer = setInterval(() => {
+      turnSecondsLeft--;
+      timerText.textContent = turnSecondsLeft;
+      const offset = CIRCUMFERENCE * (1 - turnSecondsLeft / TURN_TIMEOUT);
+      timerProgress.style.strokeDashoffset = offset;
+      updateTimerColor();
+      if (turnSecondsLeft <= 0) {
+        clearTurnTimer();
+        if (onTimeout) onTimeout();
+      }
+    }, 1000);
+  }
+  function clearTurnTimer(){ if (turnTimer) { clearInterval(turnTimer); turnTimer = null; } timerContainer.style.display = 'none'; }
+  function updateTimerColor(){
+    if (turnSecondsLeft > 20) timerProgress.style.stroke = '#4caf50';
+    else if (turnSecondsLeft > 10) timerProgress.style.stroke = '#ff9800';
+    else timerProgress.style.stroke = '#f44336';
+  }
+
+  function saveInfiniteData(chips, loan){
+    if(!isInfiniteMode) return;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({chips: chips.toString(), loan: loan.toString()}));
+  }
+  function loadInfiniteData(){
+    const s = localStorage.getItem(STORAGE_KEY);
+    if(s){
+      try{
+        const d = JSON.parse(s);
+        return {chips: BigInt(d.chips || '5000'), loan: BigInt(d.loan || '0')};
+      } catch(e){}
+    }
+    return {chips: INITIAL_CHIPS_INFINITE_PLAYER, loan: 0n};
+  }
+
+  let players=[],deck=[],pot=0n,dealerIndex=0,currentTurnIndex=-1,gamePhase='IDLE';
+  let actionsThisRound=0,canCompare=false,pendingCompareInitiator=null,gameOver=false;
+  let minDarkBet=DEFAULT_ANTE,minBrightBet=DEFAULT_ANTE*2n,toastTimer=null,isInfiniteMode=true;
+  let showCardsAtEnd=false,hasPlayedFirstRound=false,revealAllCards=false;
+  let playerProfiles=[],aiEmotions=[],aiInvested=[],lastRaiseWasDark=false,totalRounds=0;
+  let currentAnte=DEFAULT_ANTE, customInitialChips=INITIAL_CHIPS_FINITE;
+  let allChips=[];
+
+  function getInitialChips(isHuman){
+    if(isInfiniteMode) return isHuman ? loadInfiniteData().chips : AI_INFINITE_CHIPS;
+    return customInitialChips;
+  }
+
+  function addDanmaku(text,cls=''){const item=document.createElement('div');item.className='danmaku-item'+(cls?' '+cls:'');item.textContent=text;danmakuContent.appendChild(item);danmakuContent.scrollTop=danmakuContent.scrollHeight;}
+  function addDanmakuSeparator(text){const item=document.createElement('div');item.className='danmaku-separator';item.textContent=text;danmakuContent.appendChild(item);danmakuContent.scrollTop=danmakuContent.scrollHeight;}
+  function showToast(msg){if(toastTimer)clearTimeout(toastTimer);messageToast.textContent=msg;messageToast.classList.add('show');toastTimer=setTimeout(()=>{messageToast.classList.remove('show');toastTimer=null;},1800);}
+
+  function createChip(amount,fromEl){
+    if(!fromEl)return;
+    const container=document.getElementById('gameContainer');
+    const potEl=document.querySelector('.pot-display');
+    const fromRect=fromEl.getBoundingClientRect();const containerRect=container.getBoundingClientRect();
+    const potRect=potEl.getBoundingClientRect();
+    const startX=fromRect.left-containerRect.left+fromRect.width/2;const startY=fromRect.top-containerRect.top+fromRect.height/2;
+    const centerX=potRect.left-containerRect.left+potRect.width/2;const centerY=potRect.top-containerRect.top+potRect.height/2;
+    const rangeX=potRect.width*0.2,rangeY=potRect.height*0.2;
+    let endX=centerX+(Math.random()-0.5)*rangeX*2;let endY=centerY+(Math.random()-0.5)*rangeY*2;
+    const chip=document.createElement('div');chip.className='chip';
+    let size;const numAmount=Number(amount);if(numAmount>=500)size=36;else if(numAmount>=100)size=30;else if(numAmount>=50)size=26;else if(numAmount>=10)size=22;else size=18;
+    chip.style.width=size+'px';chip.style.height=size+'px';chip.style.fontSize=(size*0.45)+'px';
+    chip.style.background='#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
+    chip.textContent=formatChipAmount(amount);
+    chip.style.left=startX+'px';chip.style.top=startY+'px';
+    container.appendChild(chip);
+    document.querySelectorAll('.chip-shadow').forEach(c=>c.classList.remove('chip-shadow'));
+    chip.classList.add('chip-shadow');allChips.push(chip);
+    
+    requestAnimationFrame(()=>{chip.style.left=endX+'px';chip.style.top=endY+'px';chip.style.transition='all 0.5s ease-out';});
+    setTimeout(()=>{if(chip.parentNode)chip.classList.remove('chip-shadow');},2000);
+    
+    let adsorbTimer = setTimeout(()=>{
+      if(!chip.parentNode)return;
+      const currentLeft=parseFloat(chip.style.left);const currentTop=parseFloat(chip.style.top);
+      const dx=centerX-currentLeft;const dy=centerY-currentTop;const dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist>40){
+        const targetX=currentLeft+dx*0.3;const targetY=currentTop+dy*0.3;
+        chip.style.transition='all 2s ease-in-out';
+        chip.style.left=targetX+'px';chip.style.top=targetY+'px';
+      }
+    },800);
+
+    let isChipDragging = false, chipStartX, chipStartY, mouseStartX, mouseStartY;
+    chip.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      isChipDragging = true;
+      chip.style.transition = 'none';
+      clearTimeout(adsorbTimer);
+      const rect = chip.getBoundingClientRect();
+      mouseStartX = e.clientX; mouseStartY = e.clientY;
+      chipStartX = rect.left - containerRect.left;
+      chipStartY = rect.top - containerRect.top;
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!isChipDragging) return;
+      const dx = e.clientX - mouseStartX;
+      const dy = e.clientY - mouseStartY;
+      chip.style.left = (chipStartX + dx) + 'px';
+      chip.style.top = (chipStartY + dy) + 'px';
+    });
+    window.addEventListener('mouseup', () => {
+      if (!isChipDragging) return;
+      isChipDragging = false;
+      const currentLeft=parseFloat(chip.style.left);const currentTop=parseFloat(chip.style.top);
+      const dx=centerX-currentLeft;const dy=centerY-currentTop;const dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist>40){
+        const targetX=currentLeft+dx*0.3;const targetY=currentTop+dy*0.3;
+        chip.style.transition='all 2s ease-in-out';
+        chip.style.left=targetX+'px';chip.style.top=targetY+'px';
+      }
+    });
+
+    chip.addEventListener('touchstart', (e) => {
+      e.stopPropagation();
+      isChipDragging = true;
+      chip.style.transition = 'none';
+      clearTimeout(adsorbTimer);
+      const t = e.touches[0];
+      const rect = chip.getBoundingClientRect();
+      mouseStartX = t.clientX; mouseStartY = t.clientY;
+      chipStartX = rect.left - containerRect.left;
+      chipStartY = rect.top - containerRect.top;
+    });
+    window.addEventListener('touchmove', (e) => {
+      if (!isChipDragging) return;
+      const t = e.touches[0];
+      const dx = t.clientX - mouseStartX;
+      const dy = t.clientY - mouseStartY;
+      chip.style.left = (chipStartX + dx) + 'px';
+      chip.style.top = (chipStartY + dy) + 'px';
+    });
+    window.addEventListener('touchend', () => {
+      if (!isChipDragging) return;
+      isChipDragging = false;
+      const currentLeft=parseFloat(chip.style.left);const currentTop=parseFloat(chip.style.top);
+      const dx=centerX-currentLeft;const dy=centerY-currentTop;const dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist>40){
+        const targetX=currentLeft+dx*0.3;const targetY=currentTop+dy*0.3;
+        chip.style.transition='all 2s ease-in-out';
+        chip.style.left=targetX+'px';chip.style.top=targetY+'px';
+      }
+    });
+  }
+
+  function collectChipsToWinner(winnerEl){
+    if(!winnerEl||allChips.length===0)return;
+    const container=document.getElementById('gameContainer');
+    const wRect=winnerEl.getBoundingClientRect();const cRect=container.getBoundingClientRect();
+    const tx=wRect.left-cRect.left+wRect.width/2;const ty=wRect.top-cRect.top+wRect.height/2;
+    allChips.forEach((chip,i)=>{
+      setTimeout(()=>{
+        if(!chip.parentNode)return;
+        chip.style.transition='all 0.6s ease-in';chip.style.left=tx+'px';chip.style.top=ty+'px';
+        chip.style.opacity='0';chip.style.transform='scale(0.3)';
+        playCoinSound();setTimeout(()=>chip.remove(),600);
+      },i*50);
+    });
+    allChips=[];
+  }
+  function showFireworks(){
+    const container=document.getElementById('gameContainer');
+    for(let i=0;i<40;i++){setTimeout(()=>{const p=document.createElement('div');p.className='firework';p.style.left=Math.random()*container.offsetWidth+'px';p.style.top=Math.random()*container.offsetHeight+'px';p.style.background='#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');p.style.setProperty('--dx',(Math.random()-0.5)*300+'px');p.style.setProperty('--dy',(Math.random()-0.5)*300+'px');container.appendChild(p);setTimeout(()=>p.remove(),1500);},i*30);}
+  }
+
+  function playerDeductChips(p,amount,allowLoan=false){
+    const amt = BigInt(amount);
+    if (amt <= 0n) return {actual:0n, borrowed:0n};
+    if(isInfiniteMode && !p.isHuman) return {actual:amt, borrowed:0n};
+    if(!p.isHuman){
+      if(p.chips >= amt){ p.chips -= amt; return {actual:amt, borrowed:0n}; }
+      if(!isInfiniteMode && allowLoan){ let borrowed = amt - p.chips; p.loan += borrowed; p.chips = 0n; return {actual:amt, borrowed}; }
+      return {actual:0n, borrowed:0n};
+    }
+    if(isInfiniteMode){
+      if(p.chips < amt){ 
+        let borrowed = amt - p.chips; 
+        p.loan += borrowed; 
+        p.chips = 0n;
+        return {actual:amt, borrowed}; 
+      }
+      p.chips -= amt; 
+      return {actual:amt, borrowed:0n};
+    }
+    if(allowLoan){
+      if(p.chips < amt){ let borrowed = amt - p.chips; p.loan += borrowed; p.chips = 0n; return {actual:amt, borrowed}; }
+      p.chips -= amt; return {actual:amt, borrowed:0n};
+    }
+    if(p.chips < amt){ p.isAllIn = true; p.eliminated = true; return {actual:p.chips, borrowed:0n}; }
+    p.chips -= amt; return {actual:amt, borrowed:0n};
+  }
+
+  function updatePlayerProfile(idx,action,amount){let pr=playerProfiles[idx];pr.totalActions++;if(action==='raise')pr.raiseCount++;else if(action==='fold'){pr.foldCount++;pr.consecutiveFold++;}else if(action==='call')pr.callCount++;if(action!=='fold')pr.consecutiveFold=0;}
+
+  function switchMode(inf){
+    if(inf === isInfiniteMode) return;
+    if(inf){
+      if(!isInfiniteMode && gamePhase!=='IDLE' && gamePhase!=='ROUND_END'){
+        if(!confirm('有限版游戏进行中，切换将放弃当前进度，已扣除的入场筹码不返还。继续？')) return;
+      }
+      if(!isInfiniteMode && players[0] && !players[0].eliminated){
+        let cur = loadInfiniteData();
+        cur.chips += players[0].chips;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({chips: cur.chips.toString(), loan: cur.loan.toString()}));
+      }
+      isInfiniteMode = true;
+      infiniteBtn.classList.add('active');
+      finiteBtn.classList.remove('active');
+      finiteSettingsPopup.style.display = 'none';
+      saveSettings();
+      initGame();
+    } else {
+      let data = loadInfiniteData();
+      if(data.chips < customInitialChips){
+        alert(`无限版筹码不足（当前: ${formatChipAmount(data.chips)}），无法进入有限版！`);
+        return;
+      }
+      finiteSettingsPopup.style.display = 'flex';
+    }
+  }
+
+  function hideGameOverModal(){
+    gameOverModal.style.display = 'none';
+    grayOverlay.style.display = 'none';
+    grayOverlay.style.pointerEvents = 'none';
+  }
+  function showGameOverModal(msg){
+    gameOverMsg.textContent = msg;
+    gameOverModal.style.display = 'flex';
+    grayOverlay.style.display = 'block';
+    grayOverlay.style.pointerEvents = 'auto';
+  }
+
+  // 有限版重新开始（从无限版扣除对应筹码）
+  function restartFiniteGame(){
+    let data = loadInfiniteData();
+    if(data.chips < customInitialChips){
+      alert('无限版筹码不足，将自动返回无限版');
+      hideGameOverModal();
+      switchMode(true);
+      return;
+    }
+    data.chips -= customInitialChips;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({chips: data.chips.toString(), loan: data.loan.toString()}));
+    hideGameOverModal();
+    initGame(); // 有限版重新初始化
+  }
+
+  // 游戏结束弹窗按钮事件
+  gameOverRestartBtn.addEventListener('click', restartFiniteGame);
+  gameOverToInfiniteBtn.addEventListener('click', ()=>{
+    hideGameOverModal();
+    switchMode(true);
+  });
+
+  document.getElementById('settingsConfirm').addEventListener('click', ()=>{
+    let chipsVal = BigInt(document.getElementById('settingChips').value||'1000');
+    let anteVal = BigInt(document.getElementById('settingAnte').value||'1');
+    if (chipsVal < 100n) chipsVal = 100n;
+    if (anteVal < 1n) anteVal = 1n;
+    let data = loadInfiniteData();
+    if(data.chips < chipsVal){
+      alert(`无限版筹码不足，无法扣除${chipsVal}进入有限版。`);
+      return;
+    }
+    data.chips -= chipsVal;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({chips: data.chips.toString(), loan: data.loan.toString()}));
+    customInitialChips = chipsVal; currentAnte = anteVal;
+    anteBtn.textContent = '底注'+currentAnte.toString();
+    minDarkBet = currentAnte; minBrightBet = currentAnte*2n;
+    isInfiniteMode = false;
+    infiniteBtn.classList.remove('active');
+    finiteBtn.classList.add('active');
+    finiteSettingsPopup.style.display = 'none';
+    saveSettings();
+    initGame();
+  });
+  document.getElementById('settingsCancel').addEventListener('click', ()=>{ 
+    finiteSettingsPopup.style.display = 'none';
+    if(!isInfiniteMode && players.length===0) switchMode(true);
+  });
+
+  function applySavedSettings(settings) {
+    document.documentElement.style.setProperty('--ui-scale', settings.uiScale);
+    uiScaleSlider.value = settings.uiScale;
+    uiScaleValue.textContent = settings.uiScale.toFixed(2) + 'x';
+    if (settings.danmakuFontSize) {
+      danmakuContent.style.fontSize = settings.danmakuFontSize;
+    }
+    isInfiniteMode = settings.isInfiniteMode;
+    infiniteBtn.classList.toggle('active', isInfiniteMode);
+    finiteBtn.classList.toggle('active', !isInfiniteMode);
+    currentAnte = settings.ante;
+    anteBtn.textContent = '底注' + currentAnte.toString();
+    minDarkBet = currentAnte; minBrightBet = currentAnte * 2n;
+    showCardsAtEnd = settings.showCardsAtEnd;
+  }
+
+  function initGame(){
+    clearTurnTimer();
+    hideGameOverModal();
+    const settings = loadSettings();
+    applySavedSettings(settings);
+    players=[]; playerProfiles=[]; aiEmotions=[]; aiInvested=[];
+    const humanChips = isInfiniteMode ? loadInfiniteData().chips : customInitialChips;
+    players.push({name:PLAYER_CONFIG.human.name,chips:humanChips,cards:[],watched:false,folded:false,eliminated:false,outThisRound:false,isHuman:true,avatar:PLAYER_CONFIG.human.avatar,loan: isInfiniteMode ? loadInfiniteData().loan : 0n,rememberedDark:false,isAllIn:false,tempRaise:0n});
+    for(let i=0;i<4;i++) {
+      const aiChips = isInfiniteMode ? AI_INFINITE_CHIPS : customInitialChips;
+      players.push({name:PLAYER_CONFIG.ai[i].name,chips:aiChips,cards:[],watched:false,folded:false,eliminated:false,outThisRound:false,isHuman:false,avatar:PLAYER_CONFIG.ai[i].avatar,loan:0n,rememberedDark:false,isAllIn:false,tempRaise:0n});
+    }
+    for(let i=0;i<PLAYER_COUNT;i++){playerProfiles.push({totalActions:0,raiseCount:0,foldCount:0,callCount:0,consecutiveFold:0});aiEmotions.push({type:'normal',rounds:0,mod:0});aiInvested.push(0n);}
+    dealerIndex=0;pot=0n;gamePhase='IDLE';gameOver=false;currentTurnIndex=-1;totalRounds=0;actionsThisRound=0;canCompare=false;pendingCompareInitiator=null;
+    hasPlayedFirstRound=false;revealAllCards=false;lastRaiseWasDark=false;allChips=[];document.querySelectorAll('.chip').forEach(c=>c.remove());
+    danmakuContent.innerHTML='';addDanmaku('游戏已就绪，点击开始发牌');updatePotDisplay();renderAllSeats();renderActionPanel();hideCompareTargets();hideCompareOverlay();
+    if(isInfiniteMode) saveInfiniteData(players[0].chips, players[0].loan);
+  }
+
+  function createDeck(){let d=[];for(let s=0;s<4;s++)for(let r=2;r<=14;r++)d.push({suit:s,rank:r,rankStr:RANKS[r-2]});return d;}
+  function shuffleDeck(d){let a=[...d];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+  function evaluateHand(cards){
+    if(!cards||cards.length!==3)return{type:'high',score:0,potential:'none'};
+    let s=[...cards].sort((a,b)=>b.rank-a.rank);
+    let r0=s[0].rank,r1=s[1].rank,r2=s[2].rank; let su0=s[0].suit,su1=s[1].suit,su2=s[2].suit;
+    let flush=(su0===su1&&su1===su2);
+    let straight=(r0-r1===1&&r1-r2===1)||(r0===14&&r1===3&&r2===2);
+    let straightHigh=(r0===14&&r1===3&&r2===2)?3:r0;
+    let leopard=(r0===r1&&r1===r2); let pair=(r0===r1||r1===r2||r0===r2);
+    let potential='none'; let sameSuitCount=(su0===su1?1:0)+(su1===su2?1:0)+(su0===su2?1:0);
+    if(sameSuitCount===2)potential='flush_draw';
+    if(!pair&&!straight&&(Math.abs(r0-r1)===1||Math.abs(r1-r2)===1))potential='straight_draw';
+    if(leopard)return{type:'leopard',score:900+r0,potential:'none'};
+    if(flush&&straight)return{type:'flush_straight',score:800+straightHigh,potential:'none'};
+    if(flush)return{type:'flush',score:700+r0*3+r1+r2*0.1,potential:'none'};
+    if(straight)return{type:'straight',score:600+straightHigh,potential:'none'};
+    if(pair){let pr=r0===r1?r0:(r1===r2?r1:r0);return{type:'pair',score:500+pr*4,potential};}
+    return{type:'high',score:r0*25+r1*1.5+r2*0.08,potential};
+  }
+  function compareHands(cA,cB){
+    let a=evaluateHand(cA),b=evaluateHand(cB);
+    if(a.score!==b.score) return a.score>b.score?1:-1;
+    let sortA=[...cA].sort((x,y)=>y.rank-x.rank); let sortB=[...cB].sort((x,y)=>y.rank-x.rank);
+    for(let i=0;i<3;i++) if(sortA[i].rank!==sortB[i].rank) return sortA[i].rank>sortB[i].rank?1:-1;
+    for(let i=0;i<3;i++) if(sortA[i].suit!==sortB[i].suit) return sortA[i].suit>sortB[i].suit?1:-1;
+    return 0;
+  }
+
+  function getHandStrength(sc){if(sc>=900)return 5;if(sc>=800)return 4;if(sc>=700)return 3.5;if(sc>=600)return 3;if(sc>=500)return 2.5;if(sc>=300)return 1.5;return 0.5;}
+  function getPlayerAggression(idx){let pr=playerProfiles[idx];if(pr.totalActions===0)return 0.3;return pr.raiseCount/pr.totalActions;}
+  function getPlayerFoldRate(idx){let pr=playerProfiles[idx];if(pr.totalActions===0)return 0.3;return pr.foldCount/pr.totalActions;}
+  function estimateWinProbability(sc){if(sc>=900)return 0.95;if(sc>=800)return 0.85;if(sc>=700)return 0.75;if(sc>=600)return 0.65;if(sc>=500)return 0.55;if(sc>=300)return 0.35;return 0.2;}
+  function getAIEmotionMod(aiIdx){let e=aiEmotions[aiIdx];if(e.rounds>0){e.rounds--;return e.mod;}if(Math.random()<0.1){let t=['aggressive','conservative','normal'];let c=t[Math.floor(Math.random()*t.length)];e.type=c;e.rounds=3+Math.floor(Math.random()*5);e.mod=c==='aggressive'?0.2:(c==='conservative'?-0.2:0);}return e.mod;}
+  function getChipPressureRatio(aiIdx){let ai=players[aiIdx],h=players[0];if(h.chips<=0n||ai.chips<=0n)return 1;return Number(h.chips)/Number(ai.chips);}
+  function getBluffConfidence(aiIdx){
+    let confidence=0; let pf=getPlayerFoldRate(0),pa=getPlayerAggression(0);
+    let ac=getActivePlayerCount(); let potOdds=Number(pot)/(Number(minBrightBet)||1);
+    let chipRatio=players[aiIdx].chips>=AI_INFINITE_CHIPS?1:Number(players[aiIdx].chips)/Number(getInitialChips(false)); let pr=playerProfiles[0];
+    if(pf>0.5)confidence+=0.4; else if(pf>0.3)confidence+=0.25; else confidence-=0.2;
+    if(pa>0.4)confidence+=0.15; else confidence+=0.2;
+    if(ac<=2)confidence+=0.25; else if(ac<=3)confidence+=0.1; else confidence-=0.1;
+    if(potOdds>5)confidence+=0.15; else if(potOdds>3)confidence+=0.08; else confidence-=0.1;
+    if(chipRatio<0.3)confidence+=0.25; else if(chipRatio<0.5)confidence+=0.1;
+    if(pr.consecutiveFold>=3)confidence+=0.35; else if(pr.consecutiveFold>=2)confidence+=0.2;
+    return Math.max(-0.3,Math.min(0.65,confidence));
+  }
+
+  function makeAIDecision(ai,aiIdx,handScore,isDarkRaise,potential,isBlind){
+    let action,delay;
+    if(isBlind){
+      let betRatio=Number(minBrightBet)/(Number(ai.chips)||1); let ac=getActivePlayerCount();
+      let pf=getPlayerFoldRate(0); let pa=getPlayerAggression(0); let em=getAIEmotionMod(aiIdx);
+      let firstRound=actionsThisRound<getActivePlayerCount();
+      if(firstRound){
+        let strat=Math.random();
+        if(strat<0.25){action='watch';delay=400+Math.floor(Math.random()*800);}
+        else if(strat<0.40){let big=minDarkBet*3n;if(ai.chips>=big){ai.tempRaise=big;action='raise_dark';}else{action='dark_bet';}delay=800+Math.floor(Math.random()*2000);}
+        else if(strat<0.50){let mid=minDarkBet*2n;if(ai.chips>=mid){ai.tempRaise=mid;action='raise_dark';}else{action='dark_bet';}delay=600+Math.floor(Math.random()*1500);}
+        else if(strat<0.55){let bluff=minBrightBet*2n;if(ai.chips>=bluff){ai.tempRaise=bluff;action='raise_dark';}else{action='dark_bet';}delay=1000+Math.floor(Math.random()*2000);}
+        else{action='dark_bet';delay=300+Math.floor(Math.random()*700);}
+      }else{
+        if(Math.random()<0.12){let big=minDarkBet*2n;if(ai.chips>=big){ai.tempRaise=big;action='raise_dark';}else{action='dark_bet';}delay=800+Math.floor(Math.random()*2000);}
+        else if(betRatio>0.2){action=Math.random()<0.9?'watch':'dark_bet';delay=500+Math.floor(Math.random()*1000);}
+        else if(betRatio>0.1){action=Math.random()<0.6?'watch':'dark_bet';delay=400+Math.floor(Math.random()*800);}
+        else{action=Math.random()<0.3+em*0.1?'watch':'dark_bet';delay=300+Math.floor(Math.random()*700);}
+      }
+      return{action,delay};
+    }
+    const strength=getHandStrength(handScore); const ac=getActivePlayerCount(); const em=getAIEmotionMod(aiIdx);
+    const pressure=getChipPressureRatio(aiIdx); const pf=getPlayerFoldRate(0); const pa=getPlayerAggression(0);
+    const potOdds=Number(pot)/(Number(minBrightBet)||1); const winProb=estimateWinProbability(handScore);
+    const bluffConf=getBluffConfidence(aiIdx); const invested=Number(aiInvested[aiIdx]);
+    let foldMultiplier=1;
+    if(ac<=2)foldMultiplier=0.25; else if(ac<=3)foldMultiplier=0.5; else if(ac<=4)foldMultiplier=0.75;
+    if(potOdds>10)foldMultiplier*=0.25; else if(potOdds>5)foldMultiplier*=0.4; else if(potOdds>3)foldMultiplier*=0.6;
+    if(isDarkRaise)foldMultiplier*=0.3;
+    if(isDarkRaise&&pa>0.4)foldMultiplier*=0.6;
+    if(invested>Number(ai.chips)*0.3)foldMultiplier*=0.5; else if(invested>Number(ai.chips)*0.2)foldMultiplier*=0.7;
+    if(invested>Number(ai.chips)*0.3&&strength<2)foldMultiplier*=1.8;
+    let compareProb=0.04;
+    if(strength>=5)compareProb=0.60; else if(strength>=4)compareProb=0.45; else if(strength>=3.5)compareProb=0.35;
+    else if(strength>=3)compareProb=0.25; else if(strength>=2.5)compareProb=0.18; else if(strength>=2)compareProb=0.12;
+    else if(strength>=1.5)compareProb=0.08;
+    if(invested>Number(ai.chips)*0.3)compareProb+=0.30; else if(invested>Number(ai.chips)*0.2)compareProb+=0.20; else if(invested>Number(ai.chips)*0.1)compareProb+=0.10;
+    if(isDarkRaise)compareProb+=0.15;
+    if(ac<=2)compareProb+=0.15; else if(ac<=3)compareProb+=0.05;
+    compareProb+=em*0.1; compareProb=Math.max(0.03,Math.min(0.75,compareProb));
+    if(Math.random()<compareProb){action='compare';delay=600+Math.floor(Math.random()*1200);}
+    if(!action){
+      if(strength>=5){let rm=5+Math.floor(Math.random()*8);if(pressure>2)rm+=3;ai.tempRaise=BigInt(Math.max(Number(minBrightBet)*rm,Number(ai.chips)*0.25));action='raise_bright';delay=800+Math.floor(Math.random()*2000);}
+      else if(strength>=4){if(Math.random()<0.4){action='trap';delay=1000+Math.floor(Math.random()*2000);}else if(Math.random()<0.7+em*0.2){let rm=3+Math.floor(Math.random()*5);ai.tempRaise=minBrightBet*BigInt(rm);action='raise_bright';delay=700+Math.floor(Math.random()*1500);}else{action='bright_bet';delay=400+Math.floor(Math.random()*1000);}}
+      else if(strength>=3.5){if(Math.random()<0.55+em*0.2){let rm=3+Math.floor(Math.random()*4);ai.tempRaise=minBrightBet*BigInt(rm);action='raise_bright';delay=600+Math.floor(Math.random()*1400);}else if(winProb>0.4){action='bright_bet';delay=400+Math.floor(Math.random()*1000);}else{action=Math.random()<(0.1*foldMultiplier)?'fold':'bright_bet';delay=action==='fold'?200+Math.floor(Math.random()*600):500+Math.floor(Math.random()*1000);}}
+      else if(strength>=3){if(Math.random()<0.45+em*0.2){let rm=3+Math.floor(Math.random()*3);ai.tempRaise=minBrightBet*BigInt(rm);action='raise_bright';delay=600+Math.floor(Math.random()*1400);}else if(winProb>0.35){action='bright_bet';delay=400+Math.floor(Math.random()*1000);}else{action=Math.random()<(0.12*foldMultiplier)?'fold':'bright_bet';delay=action==='fold'?200+Math.floor(Math.random()*600):500+Math.floor(Math.random()*1000);}}
+      else if(strength>=2.5){if(isDarkRaise&&Math.random()<0.4){let rm=2+Math.floor(Math.random()*3);ai.tempRaise=minBrightBet*BigInt(rm);action='raise_bright';delay=800+Math.floor(Math.random()*1800);}else if(bluffConf>0.5&&Math.random()<0.35){let rm=2+Math.floor(Math.random()*3);ai.tempRaise=minBrightBet*BigInt(rm);action='raise_bright';delay=1200+Math.floor(Math.random()*2500);}else if(winProb>0.3){action='bright_bet';delay=500+Math.floor(Math.random()*1000);}else{action=Math.random()<(0.18*foldMultiplier)?'fold':'bright_bet';delay=action==='fold'?200+Math.floor(Math.random()*600):500+Math.floor(Math.random()*1000);}}
+      else if(strength>=2){if(bluffConf>0.6&&Math.random()<0.45){let rm=2+Math.floor(Math.random()*4);ai.tempRaise=minBrightBet*BigInt(rm);action='raise_bright';delay=1500+Math.floor(Math.random()*3000);}else if(bluffConf>0.4&&Math.random()<0.2){let rm=2+Math.floor(Math.random()*3);ai.tempRaise=minBrightBet*BigInt(rm);action='raise_bright';delay=1000+Math.floor(Math.random()*2000);}else if(potOdds>5){action='bright_bet';delay=400+Math.floor(Math.random()*800);}else{action=Math.random()<(0.3*foldMultiplier)?'fold':'bright_bet';delay=action==='fold'?200+Math.floor(Math.random()*600):500+Math.floor(Math.random()*1000);}}
+      else{if(bluffConf>0.6&&Math.random()<0.45){let rm=2+Math.floor(Math.random()*4);ai.tempRaise=minBrightBet*BigInt(rm);action='raise_bright';delay=1800+Math.floor(Math.random()*3500);}else if(bluffConf>0.4&&Math.random()<0.25){let rm=2+Math.floor(Math.random()*3);ai.tempRaise=minBrightBet*BigInt(rm);action='raise_bright';delay=1200+Math.floor(Math.random()*2500);}else if(potOdds>8){action='bright_bet';delay=400+Math.floor(Math.random()*800);}else{action='fold';delay=200+Math.floor(Math.random()*600);}}
+    }
+    return{action,delay:delay||500};
+  }
+
+  function getActivePlayerCount(){return players.filter(p=>!p.folded&&!p.eliminated&&!p.outThisRound&&p.cards.length===3).length;}
+  function findLastActivePlayer(){for(let i=0;i<PLAYER_COUNT;i++)if(!players[i].folded&&!players[i].eliminated&&!players[i].outThisRound)return i;return -1;}
+
+  function checkGameEndCondition(){
+    if(isInfiniteMode)return;
+    const h=players[0];
+    if(h.eliminated){
+      if(!gameOver){
+        gameOver=true; gamePhase='ROUND_END'; renderActionPanel();
+        addDanmakuSeparator('💔 玩家破产，游戏结束');
+        showGameOverModal('💔 你已破产');
+        playLoseSound();
+      }
+      return;
+    }
+    const ai=players.filter(p=>!p.isHuman);
+    const aiAllBroke=ai.every(p=>p.eliminated);
+    if(aiAllBroke && !gameOver){
+      gameOver=true; gamePhase='ROUND_END'; renderActionPanel();
+      addDanmakuSeparator('🎉 玩家赢光所有电脑！');
+      showGameOverModal('🎉 恭喜你赢光了所有人！');
+      showFireworks();
+      playWinSound();
+    }
+  }
+
+  function animateDeal(callback){
+    let order=[];for(let i=1;i<=PLAYER_COUNT;i++)order.push((dealerIndex+i)%PLAYER_COUNT);
+    let deckIdx=0,cardAssignments=[];
+    for(let r=0;r<3;r++)for(let pi of order)if(!players[pi].eliminated&&!players[pi].outThisRound)cardAssignments.push({playerIdx:pi,card:deck[deckIdx++]});
+    let idx=0;
+    function dealNext(){
+      if(idx>=cardAssignments.length){if(callback)callback();return;}
+      let a=cardAssignments[idx];players[a.playerIdx].cards.push(a.card);
+      renderAllSeats();
+      let rows=document.querySelectorAll('.cards-row');
+      let lastCard=null;if(rows[a.playerIdx])lastCard=rows[a.playerIdx].lastElementChild;
+      if(lastCard){lastCard.classList.add('deal-anim');setTimeout(()=>lastCard.classList.remove('deal-anim'),300);}
+      playDealCard();idx++;setTimeout(dealNext,200);
+    }
+    dealNext();
+  }
+
+  function startNewRound(){
+    if(gamePhase==='BETTING')return;if(gameOver&&!isInfiniteMode)return;
+    if(!isInfiniteMode){
+      let p=players[0];
+      if(p.chips<=0n && p.loan>0n){ p.eliminated=true; addDanmaku('玩家 无法支付底注淘汰'); }
+      if(p.eliminated){
+        showGameOverModal('💔 你已破产');
+        gameOver=true; gamePhase='ROUND_END'; renderActionPanel(); checkGameEndCondition(); return;
+      }
+    }
+    pot=0n;gamePhase='DEALING';gameOver=false;currentTurnIndex=-1;actionsThisRound=0;canCompare=false;pendingCompareInitiator=null;
+    minDarkBet=currentAnte;minBrightBet=currentAnte*2n;revealAllCards=false;lastRaiseWasDark=false;totalRounds++;addDanmakuSeparator('━━━ 第 '+totalRounds+' 局 ━━━');
+    hideCompareTargets();hideCompareOverlay();
+    document.querySelectorAll('.chip').forEach(c=>c.remove());allChips=[];
+    players.forEach(p=>{p.cards=[];p.watched=false;p.folded=false;p.outThisRound=false;p.rememberedDark=false;p.isAllIn=false;});
+    aiInvested.fill(0n);
+    players.forEach(p=>{
+      if(p.eliminated)return;
+      if(!isInfiniteMode && p.chips<=0n){ p.eliminated=true; addDanmaku((p.isHuman?'玩家':p.name)+' 筹码为零淘汰'); return; }
+      let {actual,borrowed}=playerDeductChips(p,currentAnte, !isInfiniteMode ? false : true);
+      pot+=actual;if(borrowed>0n)addDanmaku((p.isHuman?'玩家':p.name)+' 借贷 '+borrowed.toString()+' 用于底注','loan');
+      addDanmaku((p.isHuman?'玩家':p.name)+' 底注 '+currentAnte.toString());
+      let avatarEl=p.isHuman?document.querySelector('#mySeat .player-avatar'):document.querySelector(`.player-seat[data-player-index="${players.indexOf(p)}"] .player-avatar`);
+      if(avatarEl)createChip(actual,avatarEl);
+    });
+    updatePotDisplay();deck=shuffleDeck(createDeck());renderAllSeats();renderActionPanel();
+    if(isInfiniteMode) saveInfiniteData(players[0].chips, players[0].loan);
+    checkGameEndCondition();
+    if(gameOver){gamePhase='ROUND_END';renderActionPanel();return;}
+    animateDeal(()=>{
+      if(gameOver)return;
+      gamePhase='BETTING';currentTurnIndex=(dealerIndex+1)%PLAYER_COUNT;
+      advanceToNextActivePlayer();renderAllSeats();renderActionPanel();
+      if(currentTurnIndex===0){addDanmaku('🎯 轮到你');playYourTurn();startPlayerTimer();}
+      else if(currentTurnIndex>0)processAITurn();
+    });
+  }
+
+  function advanceToNextActivePlayer(){
+    let start=currentTurnIndex;
+    for(let i=0;i<PLAYER_COUNT;i++){
+      let idx=(start+i)%PLAYER_COUNT;
+      if(!players[idx].folded&&!players[idx].eliminated&&!players[idx].outThisRound&&players[idx].cards.length===3){
+        currentTurnIndex=idx;
+        if(actionsThisRound>=getActivePlayerCount()){canCompare=true;actionsThisRound=0;}
+        return;
+      }
+    }
+    endRoundWithWinner(null);
+  }
+
+  function endRoundWithWinner(wi){
+    gamePhase='ROUND_END';hasPlayedFirstRound=true;let w=wi!==null&&wi>=0?players[wi]:null;
+    let we=w?evaluateHand(w.cards):null;let bt=null,ba=0n;let winName=w?(w.isHuman?'玩家':w.name):'无人';
+    if(we){if(we.type==='flush_straight')bt='flush_straight';else if(we.type==='leopard')bt='leopard';if(we.type==='high'&&we.score<100){let rks=w.cards.map(c=>c.rank).sort((a,b)=>a-b);if(rks[0]===2&&rks[1]===3&&rks[2]===5){let le=players.some(p=>p!==w&&p.outThisRound&&p.cards.length===3&&evaluateHand(p.cards).type==='leopard');if(le)bt='235_eat_leopard';}}}
+    if(bt==='flush_straight')ba=20n;else if(bt==='leopard')ba=30n;else if(bt==='235_eat_leopard')ba=50n;
+    if(ba>0n&&w){for(let i=0;i<PLAYER_COUNT;i++){if(i===wi||(players[i].eliminated&&players[i].cards.length<3))continue;let p=players[i];playerDeductChips(p,ba, !isInfiniteMode ? false : true);w.chips+=ba;}addDanmaku(winName+' 喜钱 +'+ba.toString());}
+    let chipsBefore = w?w.chips:0n;
+    if(w){
+      w.chips+=pot;
+      if(w.loan>0n){
+        let repay = w.chips < w.loan ? w.chips : w.loan;
+        w.chips-=repay; w.loan-=repay;
+        addDanmaku(winName+' 自动还款 '+repay.toString());
+        if(w.chips<=0n){ w.eliminated=true; addDanmaku(winName+' 还款后淘汰'); }
+      }
+    }
+    let actualNetWin = w?(w.chips - chipsBefore):0n;
+    if(w){showToast('🏆 '+winName+' 净赢 '+formatChipAmount(actualNetWin)+' 筹码');addDanmakuSeparator('━━━ '+winName+' 净赢 '+formatChipAmount(actualNetWin)+' 🏆 ━━━');}
+    else{showToast('🤷 本局无赢家');addDanmakuSeparator('━━━ 本局无赢家 ━━━');}
+    renderAllSeats();pot=0n;updatePotDisplay();renderActionPanel();dealerIndex=(dealerIndex+1)%PLAYER_COUNT;
+    if(isInfiniteMode) saveInfiniteData(players[0].chips, players[0].loan);
+    checkGameEndCondition();
+    saveSettings();
+    clearTurnTimer();
+  }
+
+  function getInputValue(id){const el=document.getElementById(id);if(!el)return 0n;try{return BigInt(el.value||'0');}catch(e){return 0n;}}
+  function playerAction(action){
+    if(gamePhase!=='BETTING'||currentTurnIndex!==0)return;if(players[0].folded||players[0].eliminated)return;
+    let p=players[0];
+    if(action==='dark_bet'){
+      let am=getInputValue('darkBetInput');if(am<minDarkBet){showToast('❌ 最少暗注 '+minDarkBet.toString());return;}
+      let {actual,borrowed}=playerDeductChips(p,am, !isInfiniteMode ? false : true);
+      pot+=actual;createChip(actual,document.querySelector('#mySeat .player-avatar'));
+      if(borrowed>0n)addDanmaku('玩家 借贷 '+borrowed.toString()+' 用于暗注','loan');
+      minDarkBet=actual>minDarkBet?actual:minDarkBet;minBrightBet=actual*2n>minBrightBet?actual*2n:minBrightBet;lastRaiseWasDark=true;
+      addDanmaku('玩家 暗注 +'+formatChipAmount(actual));actionsThisRound++;updatePlayerProfile(0,'raise',Number(actual));playBetSound();finishPlayerTurn();
+    }else if(action==='bright_bet'){
+      if(!p.watched){showToast('⚠️ 请先看牌');return;}
+      let am=getInputValue('brightBetInput');if(am<minBrightBet){showToast('❌ 最少明注 '+minBrightBet.toString());return;}
+      let {actual,borrowed}=playerDeductChips(p,am, !isInfiniteMode ? false : true);
+      pot+=actual;createChip(actual,document.querySelector('#mySeat .player-avatar'));
+      if(borrowed>0n)addDanmaku('玩家 借贷 '+borrowed.toString()+' 用于明注','loan');
+      minDarkBet=(actual/2n)>minDarkBet?(actual/2n):minDarkBet;minBrightBet=actual>minBrightBet?actual:minBrightBet;lastRaiseWasDark=false;
+      addDanmaku('玩家 明注 +'+formatChipAmount(actual));actionsThisRound++;updatePlayerProfile(0,'raise',Number(actual));playBetSound();finishPlayerTurn();
+    }else if(action==='watch'){
+      if(p.watched){showToast('⚠️ 已看过牌');return;}
+      p.watched=true;addDanmaku('玩家 看牌');playWatchCard();renderAllSeats();renderActionPanel();
+      clearTurnTimer();startPlayerTimer();
+    }else if(action==='compare'){
+      if(!canCompare){showToast('⏳ 需等待一轮');return;}
+      pendingCompareInitiator=0;showCompareTargets();
+      clearTurnTimer();startTurnTimer(()=>{hideCompareTargets();pendingCompareInitiator=null;playerAction('fold');});
+    }else if(action==='fold'){
+      p.folded=true;addDanmaku('玩家 弃牌');actionsThisRound++;updatePlayerProfile(0,'fold',0);playFoldSound();finishPlayerTurn();
+    }
+  }
+
+  function playerSelectCompareTarget(ti){
+    if(pendingCompareInitiator!==0)return;
+    if(ti===0||players[ti].folded||players[ti].eliminated||players[ti].outThisRound)return;
+    clearTurnTimer();
+    let p=players[0];let fee=p.watched?minBrightBet:minDarkBet;
+    let {actual,borrowed}=playerDeductChips(p,fee, !isInfiniteMode ? false : true);
+    pot+=actual;if(borrowed>0n)addDanmaku('玩家 借贷 '+borrowed.toString()+' 用于比牌','loan');
+    playCompareSound();executeCompare(0,ti);
+    hideCompareTargets();pendingCompareInitiator=null;actionsThisRound++;finishPlayerTurn();
+  }
+
+  function startPlayerTimer(){clearTurnTimer();startTurnTimer(()=>{playerAction('fold');});}
+
+  function finishPlayerTurn(){
+    clearTurnTimer();updatePotDisplay();renderAllSeats();renderActionPanel();hideCompareTargets();pendingCompareInitiator=null;
+    if(isInfiniteMode) saveInfiniteData(players[0].chips, players[0].loan);
+    if(getActivePlayerCount()<=1){endRoundWithWinner(findLastActivePlayer());return;}
+    currentTurnIndex=(currentTurnIndex+1)%PLAYER_COUNT;advanceToNextActivePlayer();renderAllSeats();renderActionPanel();
+    if(gamePhase==='BETTING'&&currentTurnIndex>0)setTimeout(()=>processAITurn(),600+Math.random()*800);
+    else if(currentTurnIndex===0){addDanmaku('🎯 轮到你');playYourTurn();startPlayerTimer();}
+  }
+
+  function processAITurn(){
+    if(gamePhase!=='BETTING')return;let aiIdx=currentTurnIndex;if(aiIdx<=0||aiIdx>=PLAYER_COUNT)return;
+    let ai=players[aiIdx];if(ai.folded||ai.eliminated||ai.outThisRound){advanceToNextActivePlayer();renderAllSeats();renderActionPanel();if(currentTurnIndex>0)setTimeout(processAITurn,400);return;}
+    clearTurnTimer();startTurnTimer(()=>{executeAIDecision(aiIdx,'fold',0);});
+    let decision;if(!ai.watched)decision=makeAIDecision(ai,aiIdx,0,lastRaiseWasDark,'none',true);
+    else{let eval=evaluateHand(ai.cards);decision=makeAIDecision(ai,aiIdx,eval.score,lastRaiseWasDark,eval.potential,false);}
+    setTimeout(()=>{if(gamePhase!=='BETTING'||currentTurnIndex!==aiIdx)return;clearTurnTimer();executeAIDecision(aiIdx,decision.action,ai.watched?evaluateHand(ai.cards).score:0);},decision.delay||500);
+  }
+
+  function executeAIDecision(aiIdx,action,handScore){
+    let ai=players[aiIdx];ai.tempRaise=0n;
+    let aiName=ai.name;
+    let avatarEl=document.querySelector(`.player-seat[data-player-index="${aiIdx}"] .player-avatar`);
+    switch(action){
+      case'watch':ai.watched=true;playWatchCard();addDanmaku(aiName+' 看牌');renderAllSeats();break;
+      case'trap':{let{actual,borrowed}=playerDeductChips(ai,minBrightBet,true);pot+=actual;aiInvested[aiIdx]+=actual;if(borrowed>0n)addDanmaku(aiName+' 借贷 '+borrowed.toString(),'loan');addDanmaku(aiName+' 平跟陷阱');updatePlayerProfile(aiIdx,'call',Number(actual));playBetSound();if(avatarEl)createChip(actual,avatarEl);}break;
+      case'dark_bet':{let{actual,borrowed}=playerDeductChips(ai,minDarkBet,true);pot+=actual;aiInvested[aiIdx]+=actual;lastRaiseWasDark=true;if(borrowed>0n)addDanmaku(aiName+' 借贷 '+borrowed.toString(),'loan');addDanmaku(aiName+' 暗注 '+formatChipAmount(actual));updatePlayerProfile(aiIdx,'raise',Number(actual));playBetSound();if(avatarEl)createChip(actual,avatarEl);}break;
+      case'bright_bet':{let{actual,borrowed}=playerDeductChips(ai,minBrightBet,true);pot+=actual;aiInvested[aiIdx]+=actual;lastRaiseWasDark=false;if(borrowed>0n)addDanmaku(aiName+' 借贷 '+borrowed.toString(),'loan');addDanmaku(aiName+' 明注 '+formatChipAmount(actual));updatePlayerProfile(aiIdx,'call',Number(actual));playBetSound();if(avatarEl)createChip(actual,avatarEl);}break;
+      case'raise_dark':{let ra=ai.tempRaise||minDarkBet*3n;if(!isInfiniteMode&&ai.chips<ra){action='dark_bet';executeAIDecision(aiIdx,'dark_bet',handScore);return;}let{actual,borrowed}=playerDeductChips(ai,ra,true);pot+=actual;aiInvested[aiIdx]+=actual;minDarkBet=ra>minDarkBet?ra:minDarkBet;minBrightBet=ra*2n>minBrightBet?ra*2n:minBrightBet;lastRaiseWasDark=true;if(borrowed>0n)addDanmaku(aiName+' 借贷 '+borrowed.toString(),'loan');addDanmaku(aiName+' 暗注抬到 '+formatChipAmount(actual),'raise');updatePlayerProfile(aiIdx,'raise',Number(actual));playRaiseSound();if(avatarEl)createChip(actual,avatarEl);}break;
+      case'raise_bright':{let ra=ai.tempRaise||minBrightBet*3n;if(!isInfiniteMode&&ai.chips<ra){action='bright_bet';executeAIDecision(aiIdx,'bright_bet',handScore);return;}let{actual,borrowed}=playerDeductChips(ai,ra,true);pot+=actual;aiInvested[aiIdx]+=actual;minBrightBet=ra>minBrightBet?ra:minBrightBet;minDarkBet=(ra/2n)>minDarkBet?(ra/2n):minDarkBet;lastRaiseWasDark=false;if(borrowed>0n)addDanmaku(aiName+' 借贷 '+borrowed.toString(),'loan');addDanmaku(aiName+' 抬注到 '+formatChipAmount(actual),'raise');updatePlayerProfile(aiIdx,'raise',Number(actual));playRaiseSound();if(avatarEl)createChip(actual,avatarEl);}break;
+      case'compare':{
+        if(!canCompare||getActivePlayerCount()<2)break;
+        let fee=ai.watched?minBrightBet:minDarkBet;
+        let{actual,borrowed}=playerDeductChips(ai,fee,true);pot+=actual;if(borrowed>0n)addDanmaku(aiName+' 借贷 '+borrowed.toString(),'loan');if(avatarEl)createChip(actual,avatarEl);
+        let t=selectAICompareTarget(aiIdx);if(t>=0){executeCompare(aiIdx,t);playCompareSound();}
+      }break;
+      case'fold':ai.folded=true;addDanmaku(aiName+' 弃牌');updatePlayerProfile(aiIdx,'fold',0);playFoldSound();break;
+    }
+    actionsThisRound++;updatePotDisplay();renderAllSeats();
+    if(isInfiniteMode) saveInfiniteData(players[0].chips, players[0].loan);
+    if(getActivePlayerCount()<=1){endRoundWithWinner(findLastActivePlayer());return;}
+    currentTurnIndex=(currentTurnIndex+1)%PLAYER_COUNT;advanceToNextActivePlayer();renderAllSeats();renderActionPanel();
+    if(gamePhase==='BETTING'&&currentTurnIndex>0)setTimeout(processAITurn,500);
+    else if(currentTurnIndex===0){addDanmaku('🎯 轮到你');playYourTurn();startPlayerTimer();}
+  }
+
+  function selectAICompareTarget(aiIdx){let c=[];for(let i=0;i<PLAYER_COUNT;i++)if(i!==aiIdx&&!players[i].folded&&!players[i].eliminated&&!players[i].outThisRound)c.push(i);if(c.length===0)return-1;if(c.includes(0)&&Math.random()<0.5)return 0;return c[Math.floor(Math.random()*c.length)];}
+  function executeCompare(initiator,target){
+    let a=players[initiator],b=players[target];let res=compareHands(a.cards,b.cards);
+    let w=res>=0?initiator:target,l=res>=0?target:initiator;players[l].outThisRound=true;
+    if(!a.watched||!b.watched){a.watched=true;b.watched=true;}
+    let winName=players[w].isHuman?'玩家':players[w].name,loseName=players[l].isHuman?'玩家':players[l].name;
+    addDanmaku(winName+' ⚡ '+loseName+' 出局');
+    compareResultCard.innerHTML='<div style="color:#fff">'+winName+' 对决 '+loseName+'</div><div style="color:#4caf50;font-size:1.2rem;margin-top:8px">'+winName+' 胜</div>';
+    compareOverlay.classList.add('show');setTimeout(()=>compareOverlay.classList.remove('show'),1800);canCompare=false;renderAllSeats();
+  }
+
+  function renderSeatElement(p,index,container,isHuman=false){
+    container.innerHTML='';let seat=document.createElement('div');seat.className='player-seat'+(isHuman?' my-seat':'');
+    seat.setAttribute('data-player-index',index);
+    if(isHuman)seat.style.flex='0 0 auto';
+    let avatar=document.createElement('div');avatar.className='player-avatar';
+    let img=document.createElement('img');img.src=p.avatar;img.alt='';avatar.appendChild(img);
+    if(index===currentTurnIndex&&gamePhase==='BETTING'&&!p.folded&&!p.eliminated&&!p.outThisRound)avatar.classList.add('active-turn');
+    seat.appendChild(avatar);
+    let info=document.createElement('div');info.className='player-info';
+    let nameEl=document.createElement('div');nameEl.className='player-name';nameEl.textContent=p.name+(index===dealerIndex?' 🎖':'');info.appendChild(nameEl);
+    let chipsEl=document.createElement('div');chipsEl.className='player-chips';
+    if(isInfiniteMode&&!p.isHuman){chipsEl.textContent='💰 ∞';}else{chipsEl.textContent='💰 '+formatChipAmount(p.chips<0?0n:p.chips);}
+    info.appendChild(chipsEl);
+    if(p.isHuman&&isInfiniteMode){let ln=document.createElement('div');ln.className='player-loan';if(p.loan>0n){ln.textContent='🏦 -'+formatChipAmount(p.loan);}else{ln.textContent='🏦 银行';}ln.onclick=(e)=>{e.stopPropagation();showLoanPopup();};info.appendChild(ln);}
+    let statusContainer=document.createElement('div');statusContainer.style.display='flex';statusContainer.style.gap='2px';statusContainer.style.flexWrap='wrap';
+    if(p.watched&&!p.isHuman){let s=document.createElement('div');s.className='player-status status-watching';s.textContent='👁 看牌';statusContainer.appendChild(s);}
+    if(p.folded){let s=document.createElement('div');s.className='player-status status-folded';s.textContent='弃牌';statusContainer.appendChild(s);}
+    if(p.outThisRound&&!p.folded){let s=document.createElement('div');s.className='player-status status-out';s.textContent='出局';statusContainer.appendChild(s);}
+    if(p.eliminated){let s=document.createElement('div');s.className='player-status status-eliminated';s.textContent='淘汰';statusContainer.appendChild(s);}
+    info.appendChild(statusContainer);
+    seat.appendChild(info);
+    if(p.cards.length>0&&!p.eliminated){let row=document.createElement('div');row.className='cards-row';for(let c=0;c<Math.min(p.cards.length,3);c++){let cardEl=document.createElement('div');cardEl.className='card-mini';let show=(isHuman&&p.watched)||(p.eliminated&&p.watched)||(revealAllCards&&hasPlayedFirstRound);if(show){cardEl.classList.add('revealed');let card=p.cards[c];let inner=document.createElement('div');inner.className='card-inner';let rk=document.createElement('span');rk.className='card-rank '+(card.suit>=2?'suit-red':'suit-black');rk.textContent=card.rankStr;let st=document.createElement('span');st.className='card-suit '+(card.suit>=2?'suit-red':'suit-black');st.textContent=SUITS[card.suit];inner.appendChild(rk);inner.appendChild(st);cardEl.appendChild(inner);}row.appendChild(cardEl);}if(p.watched&&!revealAllCards){let badge=document.createElement('div');badge.className='watched-badge';badge.textContent='👁';row.appendChild(badge);}seat.appendChild(row);}
+    else if(!p.eliminated){let row=document.createElement('div');row.className='cards-row';seat.appendChild(row);}
+    container.appendChild(seat);
+  }
+  function renderAllSeats(){
+    topRow.innerHTML='';
+    for(let i=1;i<PLAYER_COUNT;i++){let w=document.createElement('div');w.style.flex='1';w.style.display='flex';w.style.justifyContent='center';renderSeatElement(players[i],i,w);topRow.appendChild(w);}
+    renderSeatElement(players[0],0,mySeat,true);
+  }
+  function renderActionPanel(){
+    actionPanel.innerHTML='';
+    if(gamePhase==='IDLE'||gamePhase==='ROUND_END'){
+      let btn=document.createElement('button');btn.className='action-btn btn-start';btn.textContent=gameOver&&!isInfiniteMode?'游戏结束':'🃏 开始发牌';
+      btn.onclick=()=>{if(!(gameOver&&!isInfiniteMode))startNewRound();};if(gameOver&&!isInfiniteMode)btn.disabled=true;
+      actionPanel.appendChild(btn);
+      let lb=document.createElement('label');lb.className='show-cards-check';
+      let cb=document.createElement('input');cb.type='checkbox';cb.checked=showCardsAtEnd;
+      cb.addEventListener('change',(e)=>{showCardsAtEnd=e.target.checked;if(!showCardsAtEnd)revealAllCards=false;renderAllSeats();saveSettings();});
+      lb.appendChild(cb);lb.appendChild(document.createTextNode('结尾看牌'));actionPanel.appendChild(lb);
+      return;
+    }
+    if(gamePhase==='DEALING'){let sp=document.createElement('span');sp.style.color='#fff';sp.textContent='发牌中...';actionPanel.appendChild(sp);return;}
+    if(gamePhase==='BETTING'&&currentTurnIndex===0&&!players[0].folded&&!players[0].eliminated&&!players[0].outThisRound){
+      let p=players[0];
+      if(!p.watched){
+        let gr=document.createElement('div');gr.className='input-group';
+        let inp=document.createElement('input');inp.type='number';inp.id='darkBetInput';inp.value=minDarkBet.toString();inp.min=minDarkBet.toString();
+        let btn=document.createElement('button');btn.className='btn-dark';btn.textContent='🌑 暗注';
+        btn.onclick=()=>playerAction('dark_bet');gr.appendChild(inp);gr.appendChild(btn);actionPanel.appendChild(gr);
+      }
+      if(!p.watched){let btn=document.createElement('button');btn.className='action-btn btn-watch';btn.textContent='👁 看牌';btn.onclick=()=>playerAction('watch');actionPanel.appendChild(btn);}
+      if(p.watched){
+        let gr=document.createElement('div');gr.className='input-group';
+        let inp=document.createElement('input');inp.type='number';inp.id='brightBetInput';inp.value=minBrightBet.toString();inp.min=minBrightBet.toString();
+        let btn=document.createElement('button');btn.className='btn-bright';btn.textContent='🌕 明注';
+        btn.onclick=()=>playerAction('bright_bet');gr.appendChild(inp);gr.appendChild(btn);actionPanel.appendChild(gr);
+      }
+      let cb=document.createElement('button');cb.className='action-btn btn-compare';cb.textContent='⚔ 比点';cb.disabled=!canCompare;cb.onclick=()=>playerAction('compare');actionPanel.appendChild(cb);
+      let fb=document.createElement('button');fb.className='action-btn btn-fold';fb.textContent='🏳 弃牌';fb.onclick=()=>playerAction('fold');actionPanel.appendChild(fb);
+    }else if(gamePhase==='BETTING'){let sp=document.createElement('span');sp.style.color='#ddd';sp.textContent=currentTurnIndex>0?'⏳ '+players[currentTurnIndex].name+' 思考中':'⏳ 等待中';actionPanel.appendChild(sp);}
+  }
+
+  function showLoanPopup(){
+    const p=players[0];
+    document.getElementById('loanInfo').textContent='银行: '+(p.loan>0n?'-'+formatChipAmount(p.loan):'0');
+    loanAmountInput.value = '5000';
+    document.getElementById('loanRepayBtn').textContent='还清 (需 '+formatChipAmount(p.loan)+')';
+    document.getElementById('loanRepayBtn').disabled=p.loan<=0n;
+    loanPopup.style.display='flex';
+    document.getElementById('loanBorrowBtn').onclick=()=>{
+      let amount;
+      try { amount = BigInt(loanAmountInput.value||'5000'); } catch(e) { amount = 5000n; }
+      if (amount <= 0n) return;
+      players[0].chips+=amount; players[0].loan+=amount;
+      saveInfiniteData(players[0].chips, players[0].loan);addDanmaku('玩家 借款 '+amount.toString());playLoanSound();renderAllSeats();loanPopup.style.display='none';
+    };
+    document.getElementById('loanRepayBtn').onclick=()=>{
+      if(players[0].chips>=players[0].loan){
+        players[0].chips-=players[0].loan; players[0].loan=0n;
+        saveInfiniteData(players[0].chips, players[0].loan);addDanmaku('玩家 还清借款');playRepaySound();renderAllSeats();loanPopup.style.display='none';
+      }else showToast('❌ 筹码不足还款');
+    };
+    document.getElementById('loanCloseBtn').onclick=()=>{loanPopup.style.display='none';};
+  }
+  function showCompareTargets(){
+    compareTargets.innerHTML='<span style="color:#fff;font-size:0.6rem;">选择对手：</span>';
+    for(let i=1;i<PLAYER_COUNT;i++)if(!players[i].folded&&!players[i].eliminated&&!players[i].outThisRound){let btn=document.createElement('button');btn.className='compare-target-btn';btn.textContent=players[i].name;btn.onclick=()=>playerSelectCompareTarget(i);compareTargets.appendChild(btn);}
+    let cancel=document.createElement('button');cancel.className='compare-target-btn';cancel.style.borderColor='#888';cancel.textContent='取消';cancel.onclick=()=>{hideCompareTargets();clearTurnTimer();pendingCompareInitiator=null;};compareTargets.appendChild(cancel);
+    compareTargets.style.display='flex';
+  }
+  function hideCompareTargets(){compareTargets.style.display='none';compareTargets.innerHTML='';}
+  function hideCompareOverlay(){compareOverlay.classList.remove('show');}
+  function updatePotDisplay(){potAmountEl.textContent=formatChipAmount(pot);}
+
+  resetBtn.addEventListener('click', ()=>{
+    const pass = prompt('请输入密码：','');
+    if(pass === '123456'){
+      if(confirm('确认重置无限版所有金钱属性吗？此操作不可恢复！')){
+        localStorage.removeItem(STORAGE_KEY);
+        if(isInfiniteMode){
+          initGame();
+          addDanmaku('无限版数据已重置');
+        } else {
+          alert('无限版数据已重置，切换回无限版时将生效。');
         }
-        
-        // 关闭设置面板
-        closeSettings.addEventListener('click', closeSettingsPanel);
-        
-        // 圆形取消按钮关闭设置面板
-        cancelButton.addEventListener('click', closeSettingsPanel);
-        
-        // 字体选择功能
-        fontSelect.addEventListener('change', function() {
-            const selectedFont = this.value;
-            editor.style.fontFamily = selectedFont;
-            
-            // 关闭设置面板
-            closeSettingsPanel();
-        });
-        
-        // 确保页面加载时高度正确
-        window.addEventListener('load', function() {
-            adjustEditorHeight();
-        });
-        
-        // 窗口大小改变时重新调整高度
-        window.addEventListener('resize', adjustEditorHeight);
-        
-        function adjustEditorHeight() {
-            const contentCard = document.querySelector('.content-card');
-            
-            // 计算可用高度
-            const computedStyle = window.getComputedStyle(contentCard);
-            const paddingTop = parseInt(computedStyle.paddingTop);
-            const paddingBottom = parseInt(computedStyle.paddingBottom);
-            
-            editor.style.height = 'auto';
-            const availableHeight = contentCard.clientHeight - paddingTop - paddingBottom - 2;
-            editor.style.height = availableHeight + 'px';
-        }
-        
-        // 颜色选择器功能
-        const colorInputs = document.querySelectorAll('.color-input');
-        colorInputs.forEach(input => {
-            input.addEventListener('input', function() {
-                const id = this.id;
-                const value = this.value;
-                
-                switch(id) {
-                    case 'bodyBgColor':
-                        document.body.style.backgroundColor = value;
-                        break;
-                    case 'headerBgColor':
-                        document.getElementById('headerCard').style.backgroundColor = value;
-                        break;
-                    case 'contentBgColor':
-                        document.getElementById('contentCard').style.backgroundColor = value;
-                        break;
-                    case 'editorBgColor':
-                        document.getElementById('editor').style.backgroundColor = value;
-                        break;
-                    case 'panelBgColor':
-                        const alpha = 0.98;
-                        // 将hex颜色转换为rgba
-                        const r = parseInt(value.slice(1, 3), 16);
-                        const g = parseInt(value.slice(3, 5), 16);
-                        const b = parseInt(value.slice(5, 7), 16);
-                        settingsPanel.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-                        break;
-                    case 'titleColor':
-                        title.style.color = value;
-                        break;
-                    case 'descColor':
-                        document.querySelector('.description').style.color = value;
-                        break;
-                    case 'editorTextColor':
-                        editor.style.color = value;
-                        break;
-                    case 'panelTextColor':
-                        document.querySelector('.settings-panel h2').style.color = value;
-                        document.querySelectorAll('.settings-group h3').forEach(h3 => {
-                            h3.style.color = value;
-                        });
-                        break;
-                    case 'headerBorderColor':
-                        document.getElementById('headerCard').style.borderColor = value;
-                        break;
-                    case 'contentBorderColor':
-                        document.getElementById('contentCard').style.borderColor = value;
-                        break;
-                    case 'editorBorderColor':
-                        editor.style.borderColor = value;
-                        break;
-                    case 'shadowColor':
-                        // 阴影颜色将在阴影设置更新时应用
-                        updateShadows();
-                        break;
-                }
-            });
-        });
-        
-        // 圆角滑块
-        const radiusSlider = document.getElementById('radiusSlider');
-        const radiusValue = document.getElementById('radiusValue');
-        
-        radiusSlider.addEventListener('input', function() {
-            const radius = this.value + 'px';
-            radiusValue.textContent = radius;
-            
-            // 应用圆角到所有卡片
-            document.querySelectorAll('.header-card, .content-card, .settings-panel').forEach(card => {
-                card.style.borderRadius = radius;
-            });
-            
-            // 调整编辑器圆角
-            editor.style.borderRadius = (this.value - 4) + 'px';
-        });
-        
-        // 阴影设置滑块
-        const shadowSizeSlider = document.getElementById('shadowSizeSlider');
-        const shadowSizeValue = document.getElementById('shadowSizeValue');
-        const shadowColorInput = document.getElementById('shadowColor');
-        const shadowOpacitySlider = document.getElementById('shadowOpacitySlider');
-        const shadowOpacityValue = document.getElementById('shadowOpacityValue');
-        
-        // 更新阴影的函数
-        function updateShadows() {
-            const size = shadowSizeSlider.value + 'px';
-            const opacity = shadowOpacitySlider.value / 100;
-            const color = shadowColorInput.value;
-            
-            // 解析颜色值
-            let r, g, b;
-            if (color.startsWith('#')) {
-                r = parseInt(color.slice(1, 3), 16);
-                g = parseInt(color.slice(3, 5), 16);
-                b = parseInt(color.slice(5, 7), 16);
-            } else {
-                // 如果是rgb或rgba格式
-                const match = color.match(/(\d+),\s*(\d+),\s*(\d+)/);
-                if (match) {
-                    r = parseInt(match[1]);
-                    g = parseInt(match[2]);
-                    b = parseInt(match[3]);
-                } else {
-                    r = 0; g = 0; b = 0;
-                }
-            }
-            
-            // 更新标题卡片阴影
-            document.querySelector('.header-card').style.boxShadow = `0 4px ${size} rgba(${r}, ${g}, ${b}, ${opacity * 0.8})`;
-            
-            // 更新大卡片阴影
-            const sizeNum = parseInt(size);
-            document.querySelector('.content-card').style.boxShadow = `0 ${size} ${sizeNum * 1.5}px rgba(${r}, ${g}, ${b}, ${opacity})`;
-            
-            // 更新设置面板阴影
-            document.querySelector('.settings-panel').style.boxShadow = `0 ${sizeNum + 4}px ${sizeNum * 2}px rgba(${r}, ${g}, ${b}, ${opacity * 1.5})`;
-            
-            // 更新设置按钮阴影
-            document.querySelector('.settings-button').style.boxShadow = `0 4px ${size} rgba(77, 144, 254, ${opacity * 3})`;
-        }
-        
-        shadowSizeSlider.addEventListener('input', function() {
-            shadowSizeValue.textContent = this.value + 'px';
-            updateShadows();
-        });
-        
-        shadowOpacitySlider.addEventListener('input', function() {
-            const opacity = this.value / 100;
-            shadowOpacityValue.textContent = opacity.toFixed(2);
-            updateShadows();
-        });
-        
-        shadowColorInput.addEventListener('input', updateShadows);
-        
-        // 页面缩放滑块
-        const zoomSlider = document.getElementById('zoomSlider');
-        const zoomValue = document.getElementById('zoomValue');
-        
-        zoomSlider.addEventListener('input', function() {
-            const zoomPercent = this.value;
-            zoomValue.textContent = zoomPercent + '%';
-            
-            // 应用缩放，保持原比例
-            const scale = zoomPercent / 100;
-            zoomContainer.style.transform = `scale(${scale})`;
-        });
-        
-        // 初始化阴影
-        updateShadows();
-        
-        // 彻底禁用所有下拉刷新/重新提交功能
-        document.addEventListener('touchstart', function(e) {
-            if (e.touches.length > 1) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-        
-        document.addEventListener('touchmove', function(e) {
-            // 如果目标元素不是编辑器或设置面板，阻止默认行为
-            const target = e.target;
-            const isEditor = target === editor || target.closest('#editor');
-            const isSettingsPanel = target === settingsPanel || target.closest('#settingsPanel');
-            
-            if (!isEditor && !isSettingsPanel) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-        
-        // 防止表单重新提交
-        document.addEventListener('keydown', function(e) {
-            // 防止F5刷新
-            if (e.key === 'F5') {
-                e.preventDefault();
-            }
-            
-            // 防止Ctrl+R刷新
-            if (e.ctrlKey && e.key === 'r') {
-                e.preventDefault();
-            }
-            
-            // 防止Ctrl+Shift+R刷新
-            if (e.ctrlKey && e.shiftKey && e.key === 'R') {
-                e.preventDefault();
-            }
-        });
-        
-        // 防止右键刷新
-        document.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-        });
-        
-        // 防止鼠标中键刷新
-        document.addEventListener('auxclick', function(e) {
-            if (e.button === 1) {
-                e.preventDefault();
-            }
-        });
-    </script>
+      }
+    } else if(pass !== null){
+      alert('密码错误！');
+    }
+  });
+
+  infiniteBtn.addEventListener('click',()=>switchMode(true));
+  finiteBtn.addEventListener('click',()=>switchMode(false));
+  anteBtn.addEventListener('click',()=>{
+    const input=prompt('请输入底注数值 (1-1000)',currentAnte.toString());
+    if(input!==null){const val=BigInt(input);if(val>=1n&&val<=1000n){currentAnte=val;anteBtn.textContent='底注'+val.toString();if(gamePhase==='IDLE'||gamePhase==='ROUND_END'){minDarkBet=currentAnte;minBrightBet=currentAnte*2n;renderActionPanel();}saveSettings();}else showToast('请输入1-1000的数字');}
+  });
+  fullscreenBtn.addEventListener('click',()=>{if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen();});
+  document.addEventListener('click',(e)=>{if(e.target.matches('button,.action-btn,.input-group button'))playClickSound();});
+
+  initGame();
+})();
+</script>
 </body>
 </html>
